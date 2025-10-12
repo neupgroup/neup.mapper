@@ -1,4 +1,4 @@
-# **App Name**: Neup.ORM
+# App Name: Neup.ORM
 
 ## Core Features:
 
