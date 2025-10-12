@@ -7,9 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, PlusCircle, XCircle } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type WhereClause = {
+  field: string;
+  operator: '==' | '<' | '>' | '<=' | '>=' | '!=';
+  value: string;
+};
+
+type SortBy = {
+  field: string;
+  direction: 'asc' | 'desc';
+};
 
 export default function BrowsePage() {
   const [collectionName, setCollectionName] = useState('');
@@ -17,6 +29,11 @@ export default function BrowsePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const [limit, setLimit] = useState<number | null>(null);
+  const [offset, setOffset] = useState<number | null>(null);
+  const [whereClauses, setWhereClauses] = useState<WhereClause[]>([]);
+  const [sortBy, setSortBy] = useState<SortBy | null>(null);
 
   const handleFetch = async () => {
     if (!collectionName) {
@@ -31,12 +48,36 @@ export default function BrowsePage() {
     setError(null);
     setDocuments([]);
     try {
-      const docs = await Database.collection(collectionName).getDocuments();
+      let query = Database.collection(collectionName);
+      
+      whereClauses.forEach(clause => {
+        if (clause.field && clause.value) {
+            // Attempt to convert value to a number if it looks like one
+            const numericValue = Number(clause.value);
+            const valueToUse = isNaN(numericValue) ? clause.value : numericValue;
+            query = query.where(clause.field, clause.operator, valueToUse);
+        }
+      });
+
+      if (sortBy && sortBy.field) {
+        query = query.sortBy(sortBy.field, sortBy.direction);
+      }
+
+      if (limit !== null && limit > 0) {
+        query = query.limit(limit);
+      }
+      
+      if (offset !== null && offset >= 0) {
+        query = query.offset(offset);
+      }
+
+      const docs = await query.getDocuments();
+
       setDocuments(docs);
       if (docs.length === 0) {
         toast({
             title: 'No Documents Found',
-            description: `The collection '${collectionName}' is empty or does not exist.`,
+            description: `Your query on '${collectionName}' returned no results.`,
         });
       }
     } catch (e: any) {
@@ -51,6 +92,21 @@ export default function BrowsePage() {
       setLoading(false);
     }
   };
+  
+  const addWhereClause = () => {
+    setWhereClauses([...whereClauses, { field: '', operator: '==', value: '' }]);
+  };
+
+  const updateWhereClause = (index: number, part: Partial<WhereClause>) => {
+    const newClauses = [...whereClauses];
+    newClauses[index] = { ...newClauses[index], ...part };
+    setWhereClauses(newClauses);
+  };
+  
+  const removeWhereClause = (index: number) => {
+    setWhereClauses(whereClauses.filter((_, i) => i !== index));
+  };
+
 
   const headers = documents.length > 0 ? Object.keys(documents[0]) : [];
 
@@ -66,29 +122,83 @@ export default function BrowsePage() {
           <div className="mx-auto max-w-6xl space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle>Browse Collection</CardTitle>
+                <CardTitle>Build Your Query</CardTitle>
                 <CardDescription>
-                  Enter the name of a collection to view its documents.
+                  Enter a collection name and add conditions to build your database query.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex w-full max-w-sm items-center space-x-2">
-                  <Input
-                    type="text"
-                    placeholder="e.g., users"
-                    value={collectionName}
-                    onChange={(e) => setCollectionName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
-                  />
-                  <Button type="submit" onClick={handleFetch} disabled={loading}>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                    <label htmlFor="collection-name" className="text-sm font-medium">Collection Name</label>
+                    <Input
+                        id="collection-name"
+                        type="text"
+                        placeholder="e.g., users"
+                        value={collectionName}
+                        onChange={(e) => setCollectionName(e.target.value)}
+                    />
+                </div>
+                
+                {/* Query Parameters */}
+                <div className="space-y-4">
+                    <CardTitle className="text-lg">Query Parameters</CardTitle>
+                    {/* Where Clauses */}
+                    <div className="space-y-2">
+                        {whereClauses.map((clause, index) => (
+                        <div key={index} className="flex flex-wrap items-center gap-2 p-2 border rounded-lg">
+                            <Input placeholder="Field" value={clause.field} onChange={e => updateWhereClause(index, { field: e.target.value })} className="w-full sm:w-1/3"/>
+                            <Select value={clause.operator} onValueChange={(op: WhereClause['operator']) => updateWhereClause(index, { operator: op })}>
+                                <SelectTrigger className="w-full sm:w-auto">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="==">==</SelectItem>
+                                    <SelectItem value="!=">!=</SelectItem>
+                                    <SelectItem value=">">&gt;</SelectItem>
+                                    <SelectItem value="<">&lt;</SelectItem>
+                                    <SelectItem value=">=">&gt;=</SelectItem>
+                                    <SelectItem value="<=">&lt;=</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Input placeholder="Value" value={clause.value} onChange={e => updateWhereClause(index, { value: e.target.value })} className="w-full sm:w-1/3" />
+                            <Button variant="ghost" size="icon" onClick={() => removeWhereClause(index)}>
+                                <XCircle className="text-destructive" />
+                            </Button>
+                        </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={addWhereClause}><PlusCircle/> Add Condition</Button>
+                    </div>
+                    
+                    {/* Sort By */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input placeholder="Sort by Field" value={sortBy?.field || ''} onChange={e => setSortBy({ ...sortBy, field: e.target.value, direction: sortBy?.direction || 'asc'})} className="w-full sm:w-1/2"/>
+                        <Select value={sortBy?.direction || 'asc'} onValueChange={(dir: 'asc' | 'desc') => setSortBy({ ...sortBy, field: sortBy?.field || '', direction: dir })}>
+                            <SelectTrigger className="w-full sm:w-auto">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="asc">Ascending</SelectItem>
+                                <SelectItem value="desc">Descending</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Limit and Offset */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input type="number" placeholder="Limit" onChange={e => setLimit(e.target.value ? Number(e.target.value) : null)} className="w-full sm:w-1/4"/>
+                        <Input type="number" placeholder="Offset" onChange={e => setOffset(e.target.value ? Number(e.target.value) : null)} className="w-full sm:w-1/4"/>
+                    </div>
+                </div>
+
+                <Button type="submit" onClick={handleFetch} disabled={loading || !collectionName}>
                     {loading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       <Search />
                     )}
-                    <span>Fetch</span>
-                  </Button>
-                </div>
+                    <span>Fetch Documents</span>
+                </Button>
+
               </CardContent>
             </Card>
 
@@ -96,7 +206,7 @@ export default function BrowsePage() {
               <CardHeader>
                 <CardTitle>Results</CardTitle>
                  <CardDescription>
-                  Documents from the '{collectionName}' collection.
+                  {collectionName ? `Documents from the '${collectionName}' collection.` : 'Your query results will appear here.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -120,11 +230,11 @@ export default function BrowsePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {documents.map((doc) => (
-                          <TableRow key={doc.id}>
+                        {documents.map((doc, index) => (
+                          <TableRow key={doc.id || index}>
                             {headers.map((header) => (
                               <TableCell key={header}>
-                                {typeof doc[header] === 'object'
+                                {typeof doc[header] === 'object' && doc[header] !== null
                                   ? JSON.stringify(doc[header])
                                   : String(doc[header])}
                               </TableCell>
