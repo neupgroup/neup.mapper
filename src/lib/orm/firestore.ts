@@ -1,5 +1,5 @@
 
-'use client';
+'use server';
 import {
   collection,
   query,
@@ -13,6 +13,8 @@ import {
   deleteDoc,
   DocumentData,
   Firestore,
+  startAfter,
+  getDoc,
 } from 'firebase/firestore';
 import { getFirestoreInstance } from './config';
 
@@ -28,7 +30,7 @@ interface QueryOptions {
 function getDb(): Firestore {
   const db = getFirestoreInstance();
   if (!db) {
-    throw new Error('Firestore is not initialized.');
+    throw new Error('Firestore is not initialized. Check your .env file for Firestore credentials.');
   }
   return db;
 }
@@ -46,13 +48,20 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   if (sortBy) {
     q = query(q, orderBy(sortBy.field, sortBy.direction));
   }
+  
+  if (offsetCount && sortBy) {
+      const lastVisibleDocSnapshot = await getDocs(query(collection(db, collectionName), orderBy(sortBy.field, sortBy.direction), limit(offsetCount)));
+      if (lastVisibleDocSnapshot.docs.length > 0) {
+        const lastDoc = lastVisibleDocSnapshot.docs[lastVisibleDocSnapshot.docs.length - 1];
+        q = query(q, startAfter(lastDoc));
+      }
+  } else if (offsetCount) {
+    console.warn("Offset without sortBy is not recommended and may lead to unexpected results. The query will proceed without an offset.");
+  }
+
 
   if (limitCount !== null) {
     q = query(q, limit(limitCount));
-  }
-
-  if (offsetCount) {
-    console.warn("Offset is not directly supported and has been ignored. Consider using cursor-based pagination.");
   }
 
   const querySnapshot = await getDocs(q);

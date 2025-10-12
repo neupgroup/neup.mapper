@@ -1,10 +1,7 @@
 
 'use client';
 import { DocumentData } from 'firebase/firestore';
-import { getDbConfig } from './config';
-import * as firestoreAdapter from './firestore';
-import * as apiAdapter from './api';
-import * as mysqlAdapter from './mysql';
+import { getDocuments, addDocument, updateDocument, deleteDocument } from '@/app/actions';
 
 export class QueryBuilder {
   private collectionName: string;
@@ -37,29 +34,8 @@ export class QueryBuilder {
     return this;
   }
 
-  private getAdapter() {
-    const config = getDbConfig();
-    if (!config) {
-      throw new Error('Database not configured');
-    }
-    switch (config.dbType) {
-      case 'Firestore':
-        return firestoreAdapter;
-      case 'API':
-        return apiAdapter;
-      case 'SQL':
-        return mysqlAdapter;
-      case 'MongoDB':
-        throw new Error('MongoDB not yet implemented.');
-      default:
-        throw new Error(`Unsupported database type: ${config.dbType}`);
-    }
-  }
-
   async getDocuments(...fields: string[]): Promise<DocumentData[]> {
-    const adapter = this.getAdapter();
-    return adapter.getDocuments({
-      collectionName: this.collectionName,
+    return getDocuments(this.collectionName, {
       filters: this.filters,
       limit: this.limitCount,
       offset: this.offsetCount,
@@ -69,17 +45,14 @@ export class QueryBuilder {
   }
 
   async add(data: DocumentData) {
-    const adapter = this.getAdapter();
-    return adapter.addDocument(this.collectionName, data);
+    return addDocument(this.collectionName, data);
   }
 
   async update(docId: string, data: DocumentData) {
-    const adapter = this.getAdapter();
-    return adapter.updateDocument(this.collectionName, docId, data);
+    return updateDocument(this.collectionName, docId, data);
   }
 
   async delete(docId: string) {
-    const adapter = this.getAdapter();
-    return adapter.deleteDocument(this.collectionName, docId);
+    return deleteDocument(this.collectionName, docId);
   }
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -92,25 +93,41 @@ export function ConfigureDBForm() {
     },
   });
 
-  useEffect(() => {
-    try {
-      const savedConfig = localStorage.getItem("dbConfig");
-      if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig);
-        form.reset(parsedConfig);
-        if (parsedConfig.dbType) {
-          setDbType(parsedConfig.dbType);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load configuration from local storage", error);
+   const populateEnvContent = (values: FormValues) => {
+    let content = `DB_TYPE=${values.dbType}\n`;
+    switch (values.dbType) {
+        case 'Firestore':
+            content += `
+FIRESTORE_API_KEY=${values.apiKey}
+FIRESTORE_AUTH_DOMAIN=${values.authDomain}
+FIRESTORE_PROJECT_ID=${values.projectId}
+FIRESTORE_STORAGE_BUCKET=${values.storageBucket}
+FIRESTORE_MESSAGING_SENDER_ID=${values.messagingSenderId}
+FIRESTORE_APP_ID=${values.appId}
+`;
+            break;
+        case 'API':
+            content += `
+API_BASE_PATH=${values.basePath}
+API_KEY=${values.apiKey || ''}
+`;
+            break;
+        case 'SQL':
+            content += `
+SQL_HOST=${values.host}
+SQL_PORT=${values.port}
+SQL_USER=${values.user}
+SQL_PASSWORD=${values.password || ''}
+SQL_DATABASE=${values.database}
+`;
+            break;
     }
-  }, [form]);
+    return content;
+  };
 
   const handleDbTypeChange = (value: DatabaseType) => {
     setDbType(value);
     form.setValue("dbType", value);
-    // Reset other fields when type changes
     const newDefaults = { dbType: value };
     form.reset(newDefaults);
   };
@@ -118,10 +135,14 @@ export function ConfigureDBForm() {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-      localStorage.setItem("dbConfig", JSON.stringify(values));
+      const envContent = populateEnvContent(values);
+      // Here you would typically make an API call to your backend to save the .env file
+      // For this example, we'll simulate it and show a toast.
+      console.log("Saving to .env:\n", envContent);
+      
       toast({
-        title: "Configuration Saved",
-        description: `Your ${values.dbType} configuration has been saved locally.`,
+        title: "Configuration Updated",
+        description: `Your .env file has been prepared. Please check your server logs for the content and save it to your project's .env file.`,
       });
     } catch (error) {
       console.error("Error saving configuration:", error);
@@ -348,7 +369,7 @@ export function ConfigureDBForm() {
         <CardHeader>
           <CardTitle>Database Credentials</CardTitle>
           <CardDescription>
-            Enter the details for your database connection.
+            Enter the details for your database connection. This will generate content for your <code>.env</code> file.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -387,7 +408,7 @@ export function ConfigureDBForm() {
                 ) : (
                   <Save />
                 )}
-                <span>{loading ? "Saving..." : "Save Configuration"}</span>
+                <span>{loading ? "Saving..." : "Update .env Content"}</span>
               </Button>
             </form>
           </Form>

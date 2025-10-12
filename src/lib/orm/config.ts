@@ -1,10 +1,5 @@
 
-'use client';
-
-import {
-  Firestore,
-  initializeFirestore,
-} from 'firebase/firestore';
+import { Firestore, initializeFirestore } from 'firebase/firestore';
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 
 // --- DATABASE CONFIGURATION ---
@@ -21,22 +16,52 @@ export function getDbConfig(): DbConfig | null {
   if (dbConfig) {
     return dbConfig;
   }
-  if (typeof window === 'undefined') {
+
+  const type = process.env.DB_TYPE;
+
+  if (!type) {
+    console.warn('DB_TYPE environment variable is not set.');
     return null;
   }
-  const configStr = localStorage.getItem('dbConfig');
-  if (!configStr) {
-    console.warn('Database configuration not found in local storage.');
-    return null;
+
+  let config: Partial<DbConfig> = { dbType: type as DbConfig['dbType'] };
+
+  switch (type) {
+    case 'Firestore':
+      config = {
+        ...config,
+        apiKey: process.env.FIRESTORE_API_KEY,
+        authDomain: process.env.FIRESTORE_AUTH_DOMAIN,
+        projectId: process.env.FIRESTORE_PROJECT_ID,
+        storageBucket: process.env.FIRESTORE_STORAGE_BUCKET,
+        messagingSenderId: process.env.FIRESTORE_MESSAGING_SENDER_ID,
+        appId: process.env.FIRESTORE_APP_ID,
+      };
+      break;
+    case 'API':
+      config = {
+        ...config,
+        basePath: process.env.API_BASE_PATH,
+        apiKey: process.env.API_KEY,
+      };
+      break;
+    case 'SQL':
+      config = {
+        ...config,
+        host: process.env.SQL_HOST,
+        port: process.env.SQL_PORT ? parseInt(process.env.SQL_PORT, 10) : undefined,
+        user: process.env.SQL_USER,
+        password: process.env.SQL_PASSWORD,
+        database: process.env.SQL_DATABASE,
+      };
+      break;
+    default:
+      console.warn(`Unsupported DB_TYPE: ${type}`);
+      return null;
   }
-  try {
-    const parsedConfig = JSON.parse(configStr);
-    dbConfig = parsedConfig;
-    return parsedConfig;
-  } catch (e) {
-    console.error('Failed to parse database configuration.', e);
-    return null;
-  }
+  
+  dbConfig = config as DbConfig;
+  return dbConfig;
 }
 
 export function getFirestoreInstance(): Firestore | null {

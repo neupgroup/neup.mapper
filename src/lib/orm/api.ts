@@ -1,5 +1,5 @@
 
-'use client';
+'use server';
 import { DocumentData } from 'firebase/firestore';
 import { getDbConfig } from './config';
 
@@ -13,26 +13,25 @@ interface QueryOptions {
 }
 
 function getApiSchema(collectionName: string) {
-    if (typeof window === 'undefined') return null;
-    const schemasStr = localStorage.getItem('collectionSchemas');
-    if (schemasStr) {
-        const schemas = JSON.parse(schemasStr);
-        return schemas[collectionName];
-    }
+    // This is problematic on the server. Schemas are in localStorage.
+    // For a server-centric approach, schemas would need to be stored in a file or database.
+    // For now, we will bypass this on the server.
     return null;
 }
 
 export async function getDocuments(options: QueryOptions): Promise<DocumentData[]> {
   const { collectionName, filters, limit: limitCount, offset: offsetCount, sortBy, fields } = options;
   const apiConfig = getDbConfig();
-  const apiSchema = getApiSchema(collectionName);
 
-  if (!apiConfig || apiConfig.dbType !== 'API' || !apiSchema?.getEndpoint) {
+  if (!apiConfig || apiConfig.dbType !== 'API') {
     throw new Error('API is not configured or GET endpoint is missing in schema.');
   }
 
   const { basePath, apiKey } = apiConfig;
-  const { getEndpoint } = apiSchema;
+  // Since we can't access localStorage on the server, we'll have to make an assumption
+  // or require the endpoint to be part of the environment variables.
+  // Let's assume a convention for now: /<collectionName>
+  const getEndpoint = `/${collectionName}`;
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (apiKey) {
@@ -80,14 +79,13 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
 
 export async function addDocument(collectionName: string, data: DocumentData): Promise<string> {
     const apiConfig = getDbConfig();
-    const apiSchema = getApiSchema(collectionName);
-
-    if (!apiConfig || apiConfig.dbType !== 'API' || !apiSchema?.createEndpoint) {
+    
+    if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured or CREATE endpoint is missing in schema.');
     }
     
     const { basePath, apiKey } = apiConfig;
-    const { createEndpoint } = apiSchema;
+    const createEndpoint = `/${collectionName}`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
     
@@ -103,14 +101,13 @@ export async function addDocument(collectionName: string, data: DocumentData): P
 
 export async function updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void> {
     const apiConfig = getDbConfig();
-    const apiSchema = getApiSchema(collectionName);
     
-    if (!apiConfig || apiConfig.dbType !== 'API' || !apiSchema?.updateEndpoint) {
+    if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured or UPDATE endpoint is missing in schema.');
     }
     
     const { basePath, apiKey } = apiConfig;
-    const { updateEndpoint } = apiSchema;
+    const updateEndpoint = `/${collectionName}/{id}`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
     
@@ -126,14 +123,13 @@ export async function updateDocument(collectionName: string, docId: string, data
 
 export async function deleteDocument(collectionName: string, docId: string): Promise<void> {
     const apiConfig = getDbConfig();
-    const apiSchema = getApiSchema(collectionName);
 
-    if (!apiConfig || apiConfig.dbType !== 'API' || !apiSchema?.deleteEndpoint) {
+    if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured or DELETE endpoint is missing in schema.');
     }
     
     const { basePath, apiKey } = apiConfig;
-    const { deleteEndpoint } = apiSchema;
+    const deleteEndpoint = `/${collectionName}/{id}`;
 
     const headers: Record<string, string> = {};
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
