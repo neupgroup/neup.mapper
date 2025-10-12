@@ -138,12 +138,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
           </CollapsibleContent>
 
           <div className="flex flex-1 h-[calc(100vh-4rem)]">
-            <div className="mx-auto flex w-full max-w-[1440px]">
               <AppSidebar />
-              <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                {children}
+              <main className="flex-1 overflow-y-auto">
+                <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
+                  {children}
+                </div>
               </main>
-            </div>
           </div>
         </div>
       </Collapsible>
