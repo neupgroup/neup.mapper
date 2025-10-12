@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   SidebarProvider,
@@ -11,7 +12,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Icons } from '@/components/icons';
-import { Database, Settings, Code } from 'lucide-react';
+import { Database, Settings, Code, Table } from 'lucide-react';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +39,14 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/operate">
                   <Code />
                   Operation Builder
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/data-browser">
+                  <Table />
+                  Data Browser
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
