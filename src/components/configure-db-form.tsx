@@ -28,19 +28,20 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Loader2, Save, Database, FileJson, Flame } from "lucide-react";
+import { Loader2, Save, Database, FileJson, Flame, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const databaseOptions = [
   { value: "MongoDB", label: "MongoDB", icon: FileJson },
   { value: "Firestore", label: "Firestore", icon: Flame },
   { value: "SQL", label: "SQL", icon: Database },
+  { value: "API", label: "API", icon: Link },
 ] as const;
 
 type DatabaseType = typeof databaseOptions[number]["value"];
 
 const baseSchema = z.object({
-  dbType: z.enum(["MongoDB", "Firestore", "SQL"]),
+  dbType: z.enum(["MongoDB", "Firestore", "SQL", "API"]),
 });
 
 const mongoSchema = baseSchema.extend({
@@ -64,10 +65,21 @@ const sqlSchema = baseSchema.extend({
   database: z.string().min(1, "Database name is required."),
 });
 
+const apiSchema = baseSchema.extend({
+    basePath: z.string().url("Must be a valid URL."),
+    apiKey: z.string().optional(),
+    getEndpoint: z.string().min(1, "GET endpoint is required."),
+    createEndpoint: z.string().min(1, "CREATE endpoint is required."),
+    updateEndpoint: z.string().min(1, "UPDATE endpoint is required."),
+    deleteEndpoint: z.string().min(1, "DELETE endpoint is required."),
+});
+
+
 const formSchema = z.discriminatedUnion("dbType", [
   mongoSchema.extend({ dbType: z.literal("MongoDB") }),
   firestoreSchema.extend({ dbType: z.literal("Firestore") }),
   sqlSchema.extend({ dbType: z.literal("SQL") }),
+  apiSchema.extend({ dbType: z.literal("API") }),
 ]);
 
 type FormValues = z.infer<typeof formSchema>;
@@ -298,6 +310,90 @@ export function ConfigureDBForm() {
             />
           </>
         );
+        case "API":
+        return (
+          <>
+            <FormField
+              control={form.control}
+              name="basePath"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base Path</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://api.example.com/v1" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="apiKey"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>API Key (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="Bearer ..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <h3 className="text-lg font-medium pt-4">Endpoints</h3>
+            <FormField
+              control={form.control}
+              name="getEndpoint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GET Endpoint</FormLabel>
+                  <FormControl>
+                    <Input placeholder="/items or /items/{id}" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="createEndpoint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CREATE (POST) Endpoint</FormLabel>
+                  <FormControl>
+                    <Input placeholder="/items" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="updateEndpoint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UPDATE (PUT/PATCH) Endpoint</FormLabel>
+                  <FormControl>
+                    <Input placeholder="/items/{id}" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="deleteEndpoint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>DELETE Endpoint</FormLabel>
+                  <FormControl>
+                    <Input placeholder="/items/{id}" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        );
       default:
         return null;
     }
@@ -357,3 +453,5 @@ export function ConfigureDBForm() {
     </div>
   );
 }
+
+    

@@ -23,12 +23,13 @@ import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 
 // --- DATABASE CONFIGURATION ---
 interface DbConfig {
-  dbType: 'Firestore' | 'MongoDB' | 'SQL';
+  dbType: 'Firestore' | 'MongoDB' | 'SQL' | 'API';
   [key: string]: any;
 }
 
 let firestoreInstance: Firestore | null = null;
 let appInstance: FirebaseApp | null = null;
+let apiConfig: any = null;
 
 function getDbConfig(): DbConfig | null {
   if (typeof window === 'undefined') {
@@ -40,7 +41,11 @@ function getDbConfig(): DbConfig | null {
     return null;
   }
   try {
-    return JSON.parse(configStr);
+    const parsedConfig = JSON.parse(configStr);
+    if(parsedConfig.dbType === 'API') {
+      apiConfig = parsedConfig;
+    }
+    return parsedConfig;
   } catch (e) {
     console.error('Failed to parse database configuration.', e);
     return null;
@@ -134,10 +139,70 @@ class QueryBuilder {
       case 'MongoDB':
         // Placeholder for MongoDB logic
         throw new Error('MongoDB not yet implemented.');
+       case 'API':
+        return this.getApiDocuments(fields);
       default:
         throw new Error(`Unsupported database type: ${config.dbType}`);
     }
   }
+
+   private async getApiDocuments(fields: string[]): Promise<DocumentData[]> {
+    if (!apiConfig) {
+      throw new Error('API is not configured.');
+    }
+    
+    const { basePath, getEndpoint, apiKey } = apiConfig;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    // For simplicity, this example assumes a GET request to a collection endpoint.
+    // A full implementation would need to handle path parameters like {id}.
+    const url = new URL(`${basePath}${getEndpoint}`);
+    
+    // Append filters as query parameters
+    this.filters.forEach(f => url.searchParams.append(f.field, f.value));
+
+    // Append sorting
+    if (this.sorting) {
+      url.searchParams.append('_sort', this.sorting.field);
+      url.searchParams.append('_order', this.sorting.direction);
+    }
+    
+    // Append limit
+    if (this.limitCount) {
+      url.searchParams.append('_limit', this.limitCount.toString());
+    }
+
+    // Append offset (page for json-server like APIs)
+    if (this.offsetCount && this.limitCount) {
+       url.searchParams.append('_page', (Math.floor(this.offsetCount / this.limitCount) + 1).toString());
+    }
+
+    const response = await fetch(url.toString(), { headers });
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    let data = await response.json();
+
+    // If API returns an array of objects
+    if (Array.isArray(data) && fields.length > 0) {
+      return data.map(item => {
+        const selectedData: DocumentData = { id: item.id };
+         fields.forEach(field => {
+          if (item[field] !== undefined) {
+            selectedData[field] = item[field];
+          }
+        });
+        return selectedData;
+      });
+    }
+
+    return Array.isArray(data) ? data : [data];
+  }
+
 
   private async getFirestoreDocuments(fields: string[]): Promise<DocumentData[]> {
     if (!this.db) {
@@ -189,20 +254,86 @@ class QueryBuilder {
 
   // CUD Operations
   async add(data: DocumentData) {
-     if (!this.db) throw new Error('Firestore is not initialized.');
-     const docRef = await addDoc(collection(this.db, this.collectionName), data);
-     return docRef.id;
+     const config = getDbConfig();
+     if (!config) throw new Error('Database not configured');
+
+     switch (config.dbType) {
+        case 'Firestore':
+            if (!this.db) throw new Error('Firestore is not initialized.');
+            const docRef = await addDoc(collection(this.db, this.collectionName), data);
+            return docRef.id;
+        case 'API':
+             if (!apiConfig) throw new Error('API is not configured.');
+             const { basePath, createEndpoint, apiKey } = apiConfig;
+             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+             
+             const response = await fetch(`${basePath}${createEndpoint}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(data),
+             });
+             if (!response.ok) throw new Error(`API create failed: ${response.statusText}`);
+             const result = await response.json();
+             return result.id; // Assumes API returns the new object with an id
+        default:
+            throw new Error(`Unsupported database type for add: ${config.dbType}`);
+     }
   }
 
   async update(docId: string, data: DocumentData) {
-     if (!this.db) throw new Error('Firestore is not initialized.');
-     const docRef = doc(this.db, this.collectionName, docId);
-     await updateDoc(docRef, data);
+     const config = getDbConfig();
+     if (!config) throw new Error('Database not configured');
+
+     switch (config.dbType) {
+        case 'Firestore':
+            if (!this.db) throw new Error('Firestore is not initialized.');
+            const docRef = doc(this.db, this.collectionName, docId);
+            await updateDoc(docRef, data);
+            break;
+        case 'API':
+             if (!apiConfig) throw new Error('API is not configured.');
+             const { basePath, updateEndpoint, apiKey } = apiConfig;
+             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+             
+             const url = `${basePath}${updateEndpoint.replace('{id}', docId)}`;
+             
+             const response = await fetch(url, {
+                method: 'PUT', // or PATCH
+                headers,
+                body: JSON.stringify(data),
+             });
+             if (!response.ok) throw new Error(`API update failed: ${response.statusText}`);
+             break;
+        default:
+            throw new Error(`Unsupported database type for update: ${config.dbType}`);
+     }
   }
 
   async delete(docId: string) {
-     if (!this.db) throw new Error('Firestore is not initialized.');
-     await deleteDoc(doc(this.db, this.collectionName, docId));
+      const config = getDbConfig();
+      if (!config) throw new Error('Database not configured');
+
+      switch (config.dbType) {
+        case 'Firestore':
+            if (!this.db) throw new Error('Firestore is not initialized.');
+            await deleteDoc(doc(this.db, this.collectionName, docId));
+            break;
+        case 'API':
+             if (!apiConfig) throw new Error('API is not configured.');
+             const { basePath, deleteEndpoint, apiKey } = apiConfig;
+             const headers: Record<string, string> = {};
+             if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+             
+             const url = `${basePath}${deleteEndpoint.replace('{id}', docId)}`;
+             
+             const response = await fetch(url, { method: 'DELETE', headers });
+             if (!response.ok) throw new Error(`API delete failed: ${response.statusText}`);
+             break;
+        default:
+            throw new Error(`Unsupported database type for delete: ${config.dbType}`);
+      }
   }
 }
 
@@ -213,3 +344,5 @@ export const Database = {
     return new QueryBuilder(collectionName);
   }
 };
+
+    
