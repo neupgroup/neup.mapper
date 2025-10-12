@@ -11,7 +11,7 @@ import { Loader2, Search } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
 
-export default function DataBrowserPage() {
+export default function BrowsePage() {
   const [collectionName, setCollectionName] = useState('');
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

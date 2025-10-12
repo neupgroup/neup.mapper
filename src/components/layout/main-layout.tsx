@@ -44,7 +44,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/data-browser">
+                <Link href="/browse">
                   <Table />
                   Data Browser
                 </Link>
