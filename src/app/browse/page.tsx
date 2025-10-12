@@ -6,7 +6,6 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Search, PlusCircle, XCircle } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
@@ -107,8 +106,6 @@ export default function BrowsePage() {
     setWhereClauses(whereClauses.filter((_, i) => i !== index));
   };
 
-
-  const headers = documents.length > 0 ? Object.keys(documents[0]) : [];
 
   return (
     <MainLayout>
@@ -220,29 +217,26 @@ export default function BrowsePage() {
                         <p>{error}</p>
                     </div>
                 ) : documents.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHead key={header}>{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {documents.map((doc, index) => (
-                          <TableRow key={doc.id || index}>
-                            {headers.map((header) => (
-                              <TableCell key={header}>
-                                {typeof doc[header] === 'object' && doc[header] !== null
-                                  ? JSON.stringify(doc[header])
-                                  : String(doc[header])}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.map((doc, index) => (
+                      <Card key={doc.id || index}>
+                          <CardHeader>
+                              <CardTitle className="text-lg truncate">{doc.id || `Document ${index + 1}`}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <div className="space-y-2 text-sm">
+                                  {Object.entries(doc).map(([key, value]) => (
+                                      <div key={key} className="flex justify-between">
+                                          <span className="font-semibold text-muted-foreground">{key}:</span>
+                                          <span className="text-right truncate">
+                                              {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
+                                          </span>
+                                      </div>
+                                  ))}
+                              </div>
+                          </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-10">
