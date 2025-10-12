@@ -29,7 +29,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Loader2, Save, Database, FileJson, Flame, Link } from "lucide-react";
+import { Loader2, Wand2, Download, Database, FileJson, Flame, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const databaseOptions = [
@@ -85,6 +85,8 @@ export function ConfigureDBForm() {
   const [loading, setLoading] = useState(false);
   const [dbType, setDbType] = useState<DatabaseType>("Firestore");
   const { toast } = useToast();
+  const [envContent, setEnvContent] = useState<string | null>(null);
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -127,6 +129,7 @@ SQL_DATABASE=${values.database}
 
   const handleDbTypeChange = (value: DatabaseType) => {
     setDbType(value);
+    setEnvContent(null);
     form.setValue("dbType", value);
     const newDefaults = { dbType: value };
     form.reset(newDefaults);
@@ -134,27 +137,40 @@ SQL_DATABASE=${values.database}
 
   async function onSubmit(values: FormValues) {
     setLoading(true);
+    setEnvContent(null);
     try {
-      const envContent = populateEnvContent(values);
-      // Here you would typically make an API call to your backend to save the .env file
-      // For this example, we'll simulate it and show a toast.
-      console.log("Saving to .env:\n", envContent);
+      const content = populateEnvContent(values);
+      setEnvContent(content);
       
       toast({
-        title: "Configuration Updated",
-        description: `Your .env file has been prepared. Please check your server logs for the content and save it to your project's .env file.`,
+        title: "Content Generated",
+        description: `Your .env file content has been generated and is ready for download.`,
       });
     } catch (error) {
-      console.error("Error saving configuration:", error);
+      console.error("Error generating configuration:", error);
       toast({
         variant: "destructive",
         title: "An error occurred",
-        description: "Failed to save configuration. Please try again.",
+        description: "Failed to generate configuration. Please try again.",
       });
     } finally {
       setLoading(false);
     }
   }
+
+  const downloadEnvFile = () => {
+    if (!envContent) return;
+
+    const blob = new Blob([envContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.env';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   
   const renderFormFields = () => {
     switch (dbType) {
@@ -401,15 +417,24 @@ SQL_DATABASE=${values.database}
               </FormItem>
               
               {renderFormFields()}
+              
+              <div className="flex flex-wrap gap-4">
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                  {loading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Wand2 />
+                  )}
+                  <span>{loading ? "Generating..." : "Generate .env Content"}</span>
+                </Button>
 
-              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                {loading ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Save />
+                {envContent && (
+                    <Button type="button" variant="secondary" onClick={downloadEnvFile} className="w-full sm:w-auto">
+                        <Download />
+                        <span>Download .env File</span>
+                    </Button>
                 )}
-                <span>{loading ? "Saving..." : "Update .env Content"}</span>
-              </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
@@ -417,3 +442,5 @@ SQL_DATABASE=${values.database}
     </div>
   );
 }
+
+    
