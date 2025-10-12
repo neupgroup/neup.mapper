@@ -10,7 +10,7 @@ export default function ConfigurePage() {
             Database Configuration
           </h1>
         </header>
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-4xl">
             <p className="mb-8 text-muted-foreground">
               Configure the credentials for the database you want to connect to. This information will be stored securely in your browser's local storage and will not be transmitted elsewhere.

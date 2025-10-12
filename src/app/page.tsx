@@ -11,7 +11,7 @@ export default function Home() {
             AI Schema Builder
           </h1>
         </header>
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-4xl">
             <p className="mb-8 text-muted-foreground">
               Describe your data and let our AI suggest the optimal schema for

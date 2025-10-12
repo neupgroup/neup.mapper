@@ -11,7 +11,7 @@ export default function SchemasPage() {
             Schema Builder
           </h1>
         </header>
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-4xl">
             <p className="mb-8 text-muted-foreground">
               Define the structure of your database collections. These schemas will be used in the Data Browser to provide a better experience for creating and editing documents.

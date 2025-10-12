@@ -2,7 +2,8 @@
 import type { ReactNode } from 'react';
 import { MainNav } from '@/components/layout/main-nav';
 import { Icons } from '@/components/icons';
-import { Menu, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePathname } from 'next/navigation';
@@ -42,11 +43,7 @@ function MobileNav({
         className="md:hidden"
         onClick={onToggle}
       >
-        {isOpen ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Menu className="h-5 w-5" />
-        )}
+        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         <span className="sr-only">Toggle Menu</span>
       </Button>
     </CollapsibleTrigger>
@@ -69,11 +66,7 @@ function NavLink({
     }
   };
 
-  return (
-    <Link href={href} onClick={handleClick}>
-      {children}
-    </Link>
-  );
+  return <Link href={href} onClick={handleClick}>{children}</Link>;
 }
 
 export function MainLayout({ children }: { children: ReactNode }) {
@@ -98,7 +91,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
   }, [isMobileMenuOpen]);
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+    <div className="flex h-screen w-full flex-col bg-background overflow-hidden">
       <Collapsible
         asChild
         open={isMobileMenuOpen}
@@ -108,21 +101,31 @@ export function MainLayout({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-20 w-full border-b bg-background/80 backdrop-blur-sm">
             <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-4 md:gap-8">
-                 <NavLink href="/">
-                      <div className="flex items-center gap-2">
-                        <Icons.logo className="h-6 w-6 text-primary" />
-                        <h1 className="hidden sm:block font-headline text-xl font-semibold">Neup.Mapper</h1>
-                      </div>
-                    </NavLink>
+                <NavLink href="/">
+                  <div className="flex items-center gap-2">
+                    <Icons.logo className="h-6 w-6 text-primary" />
+                    <h1 className="hidden sm:block font-headline text-xl font-semibold">
+                      Neup.Mapper
+                    </h1>
+                  </div>
+                </NavLink>
               </div>
 
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:hidden">
                 <NavLink href="/">
-                   <Icons.logo className="h-6 w-6 text-primary" />
+                  <Icons.logo className="h-6 w-6 text-primary" />
                 </NavLink>
               </div>
 
               <div className="flex items-center gap-4">
+                <form className="relative ml-auto hidden sm:flex-initial">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search..."
+                    className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                  />
+                </form>
                 <MobileNav
                   isOpen={isMobileMenuOpen}
                   onToggle={() => setIsMobileMenuOpen((prev) => !prev)}
@@ -131,19 +134,19 @@ export function MainLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <CollapsibleContent className="absolute top-16 z-10 w-full overflow-y-auto border-b bg-card data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down md:hidden">
-            <div className="h-[calc(100vh-4rem)] p-4 pb-16">
+          <CollapsibleContent className="md:hidden absolute top-16 z-10 w-full bg-card border-b overflow-y-auto data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+            <div className="p-4 h-[calc(100vh-4rem)] pb-16">
               <MainNav />
             </div>
           </CollapsibleContent>
 
           <div className="flex flex-1 h-[calc(100vh-4rem)]">
-            <AppSidebar />
-            <main className="flex-1 overflow-y-auto">
-              <div className="mx-auto max-w-[1440px]">
+            <div className="mx-auto flex w-full max-w-[1440px]">
+              <AppSidebar />
+              <main className="flex-1 overflow-y-auto">
                 {children}
-              </div>
-            </main>
+              </main>
+            </div>
           </div>
         </div>
       </Collapsible>
