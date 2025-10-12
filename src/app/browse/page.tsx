@@ -24,6 +24,7 @@ type SortBy = {
 
 export default function BrowsePage() {
   const [collectionName, setCollectionName] = useState('');
+  const [fields, setFields] = useState('');
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,6 @@ export default function BrowsePage() {
       
       whereClauses.forEach(clause => {
         if (clause.field && clause.value) {
-            // Attempt to convert value to a number if it looks like one
             const numericValue = Number(clause.value);
             const valueToUse = isNaN(numericValue) ? clause.value : numericValue;
             query = query.where(clause.field, clause.operator, valueToUse);
@@ -70,7 +70,8 @@ export default function BrowsePage() {
         query = query.offset(offset);
       }
 
-      const docs = await query.getDocuments();
+      const fieldsToFetch = fields.split(',').map(f => f.trim()).filter(f => f);
+      const docs = await query.getDocuments(...fieldsToFetch);
 
       setDocuments(docs);
       if (docs.length === 0) {
@@ -125,19 +126,31 @@ export default function BrowsePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                    <label htmlFor="collection-name" className="text-sm font-medium">Collection Name</label>
-                    <Input
-                        id="collection-name"
-                        type="text"
-                        placeholder="e.g., users"
-                        value={collectionName}
-                        onChange={(e) => setCollectionName(e.target.value)}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col space-y-2">
+                        <label htmlFor="collection-name" className="text-sm font-medium">Collection Name</label>
+                        <Input
+                            id="collection-name"
+                            type="text"
+                            placeholder="e.g., users"
+                            value={collectionName}
+                            onChange={(e) => setCollectionName(e.target.value)}
+                        />
+                    </div>
+                     <div className="flex flex-col space-y-2">
+                        <label htmlFor="fields" className="text-sm font-medium">Fields (comma-separated)</label>
+                        <Input
+                            id="fields"
+                            type="text"
+                            placeholder="e.g., name, email (optional)"
+                            value={fields}
+                            onChange={(e) => setFields(e.target.value)}
+                        />
+                    </div>
                 </div>
                 
                 {/* Query Parameters */}
-                <div className="space-y-4">
+                <div className="space-y-4 pt-4">
                     <CardTitle className="text-lg">Query Parameters</CardTitle>
                     {/* Where Clauses */}
                     <div className="space-y-2">
