@@ -10,7 +10,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Raleway', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
         headline: ['"Space Grotesk"', 'sans-serif'],
         code: ['"Fira Code"', 'monospace'],
       },

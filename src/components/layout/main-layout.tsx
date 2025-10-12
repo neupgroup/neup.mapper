@@ -111,7 +111,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
                  <NavLink href="/">
                       <div className="flex items-center gap-2">
                         <Icons.logo className="h-6 w-6 text-primary" />
-                        <h1 className="hidden sm:block font-headline text-xl font-semibold">Neup.ORM</h1>
+                        <h1 className="hidden sm:block font-headline text-xl font-semibold">Neup.Mapper</h1>
                       </div>
                     </NavLink>
               </div>
@@ -138,12 +138,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
           </CollapsibleContent>
 
           <div className="flex flex-1 h-[calc(100vh-4rem)]">
-              <AppSidebar />
-              <main className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
-                  {children}
-                </div>
-              </main>
+            <AppSidebar />
+            <main className="flex-1 overflow-y-auto">
+              <div className="mx-auto max-w-[1440px]">
+                {children}
+              </div>
+            </main>
           </div>
         </div>
       </Collapsible>
