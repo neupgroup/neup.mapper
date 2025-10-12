@@ -26,7 +26,7 @@ import { Loader2, Wand2 } from "lucide-react";
 import {
   suggestOperation,
   type AIOperationSuggestionOutput,
-} from "@/ai/flows/ai-operation-suggestion";
+} from "@/actions/ai-operation-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";

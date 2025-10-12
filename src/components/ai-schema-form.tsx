@@ -33,7 +33,7 @@ import { Loader2, Wand2, Database, FileJson, Flame } from "lucide-react";
 import {
   suggestSchema,
   type AISchemaSuggestionOutput,
-} from "@/ai/flows/ai-schema-suggestion";
+} from "@/actions/ai-schema-suggestion";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "./ui/skeleton";
 
