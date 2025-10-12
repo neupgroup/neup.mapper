@@ -4,6 +4,7 @@ import { DocumentData } from 'firebase/firestore';
 import { getDbConfig } from './config';
 import * as firestoreAdapter from './firestore';
 import * as apiAdapter from './api';
+import * as mysqlAdapter from './mysql';
 
 export class QueryBuilder {
   private collectionName: string;
@@ -46,10 +47,10 @@ export class QueryBuilder {
         return firestoreAdapter;
       case 'API':
         return apiAdapter;
+      case 'SQL':
+        return mysqlAdapter;
       case 'MongoDB':
         throw new Error('MongoDB not yet implemented.');
-      case 'SQL':
-        throw new Error('SQL not yet implemented.');
       default:
         throw new Error(`Unsupported database type: ${config.dbType}`);
     }
