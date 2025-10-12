@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, FilePlus2, BookType, PencilRuler } from 'lucide-react';
+import { Loader2, FilePlus2, BookType, PencilRuler, Play, Wand2 } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,9 @@ export function CreateForm() {
   const [activeSchema, setActiveSchema] = useState<Schema | null>(null);
   const [useManualJson, setUseManualJson] = useState(true);
   const { toast } = useToast();
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [formDataForExec, setFormDataForExec] = useState<any>(null);
+
 
   const form = useForm();
 
@@ -49,55 +52,91 @@ export function CreateForm() {
     const schema = schemas[collectionName];
     if (schema) {
       setActiveSchema(schema);
-      setUseManualJson(false);
+      setUseManualJson(Object.keys(schema.fields).length === 0);
     } else {
       setActiveSchema(null);
       setUseManualJson(true);
     }
     form.reset();
+    setGeneratedCode(null);
+    setFormDataForExec(null);
   }, [collectionName, schemas, form]);
 
-  const handleCreateDocument = async (data: any) => {
+  const handleGenerateCode = (data: any) => {
     if (!collectionName) {
       toast({ variant: 'destructive', title: 'Collection name is missing.' });
       return;
     }
 
-    let docData;
+    let docDataString: string;
+    let dataForExec: any;
+
     try {
       if (useManualJson) {
         if (!newDocContent) {
           toast({ variant: 'destructive', title: 'Document content is missing.' });
           return;
         }
-        docData = JSON.parse(newDocContent);
+        // Validate JSON
+        JSON.parse(newDocContent); 
+        docDataString = newDocContent;
+        dataForExec = newDocContent;
+
       } else {
-        // Convert form data to correct types
-        docData = Object.entries(data).reduce((acc, [key, value]) => {
+         // Convert form data to correct types for the string representation
+        const docDataForString = Object.entries(data).reduce((acc, [key, value]) => {
           const fieldType = activeSchema?.fields.find(f => f.fieldName === key)?.fieldType;
-          if (fieldType === 'number') {
-            acc[key] = Number(value);
-          } else if (fieldType === 'boolean') {
+           if (fieldType === 'boolean') {
             acc[key] = Boolean(value);
-          } else if (fieldType === 'array' || fieldType === 'object') {
-            try {
-              acc[key] = JSON.parse(value as string);
-            } catch (e) {
-              // Leave as string if parsing fails, let Firestore handle it or show an error
-              acc[key] = value;
-              toast({ variant: "destructive", title: "Invalid JSON", description: `Field '${key}' has invalid JSON content.`});
-              throw e; // Prevent submission
-            }
           } else {
             acc[key] = value;
           }
           return acc;
         }, {} as Record<string, any>);
+
+        docDataString = JSON.stringify(docDataForString, null, 2);
+        dataForExec = data;
       }
-    } catch (e: any) {
-      console.error("Parsing error:", e);
-      toast({ variant: "destructive", title: "Invalid JSON format", description: "Please check the document content." });
-      return;
+    } catch (e) {
+       toast({ variant: "destructive", title: "Invalid JSON format", description: "Please check the document content." });
+       return;
+    }
+    
+    setGeneratedCode(`Database.collection('${collectionName}').add(${docDataString});`);
+    setFormDataForExec(dataForExec);
+  };
+
+
+  const handleCreateDocument = async () => {
+    let docData: any;
+    
+    try {
+        if (useManualJson) {
+            docData = JSON.parse(formDataForExec);
+        } else {
+            // Convert form data to correct types for execution
+            docData = Object.entries(formDataForExec).reduce((acc, [key, value]) => {
+                const fieldType = activeSchema?.fields.find(f => f.fieldName === key)?.fieldType;
+                if (fieldType === 'number') {
+                    acc[key] = Number(value);
+                } else if (fieldType === 'boolean') {
+                    acc[key] = Boolean(value);
+                } else if (fieldType === 'array' || fieldType === 'object') {
+                    try {
+                        acc[key] = JSON.parse(value as string);
+                    } catch (e) {
+                        toast({ variant: "destructive", title: "Invalid JSON", description: `Field '${key}' has invalid JSON content.` });
+                        throw e; // Prevent submission
+                    }
+                } else {
+                    acc[key] = value;
+                }
+                return acc;
+            }, {} as Record<string, any>);
+        }
+    } catch(e) {
+        toast({ variant: "destructive", title: "Invalid Data", description: "Could not execute code. Please check your data format." });
+        return;
     }
     
     setLoading(true);
@@ -109,6 +148,8 @@ export function CreateForm() {
       } else {
         form.reset();
       }
+      setGeneratedCode(null);
+      setFormDataForExec(null);
     } catch (e: any) {
       console.error('Create error:', e);
       toast({ variant: 'destructive', title: 'Failed to create document', description: e.message });
@@ -158,8 +199,8 @@ export function CreateForm() {
             <div className="flex items-center space-x-2 rounded-lg border p-3">
                 <Switch id="mode-switch" checked={!useManualJson} onCheckedChange={(checked) => setUseManualJson(!checked)} />
                 <Label htmlFor="mode-switch" className="flex items-center gap-2 cursor-pointer">
-                    {useManualJson ? <PencilRuler/> : <BookType />}
-                    {useManualJson ? 'Switch to Schema Form' : 'Switch to Manual JSON'}
+                    {!useManualJson ? <BookType /> : <PencilRuler />}
+                    {!useManualJson ? 'Using Schema Form' : 'Using Manual JSON'}
                 </Label>
             </div>
         )}
@@ -176,14 +217,14 @@ export function CreateForm() {
                     onChange={(e) => setNewDocContent(e.target.value)}
                 />
             </div>
-             <Button onClick={() => handleCreateDocument(null)} disabled={loading || !collectionName}>
-                {loading ? <Loader2 className="animate-spin" /> : <FilePlus2 />}
-                <span>Create Document</span>
+             <Button onClick={() => handleGenerateCode(null)} disabled={!collectionName}>
+                <Wand2 />
+                <span>Generate Code</span>
             </Button>
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleCreateDocument)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleGenerateCode)} className="space-y-4">
               {activeSchema?.fields.map(field => (
                 <FormField
                   key={field.fieldName}
@@ -203,13 +244,28 @@ export function CreateForm() {
                 />
               ))}
               <div className="flex justify-end">
-                <Button type="submit" disabled={loading || !collectionName}>
-                    {loading ? <Loader2 className="animate-spin" /> : <FilePlus2 />}
-                    <span>Create Document from Schema</span>
+                <Button type="submit" disabled={!collectionName}>
+                    <Wand2 />
+                    <span>Generate Code</span>
                 </Button>
               </div>
             </form>
           </Form>
+        )}
+
+        {generatedCode && (
+            <div className="space-y-4 pt-4">
+                <h3 className="text-md font-medium">Generated Code</h3>
+                <div className="rounded-lg border bg-card-foreground/5 font-code">
+                    <pre className="overflow-x-auto p-4 text-sm text-card-foreground">
+                        <code>{generatedCode}</code>
+                    </pre>
+                </div>
+                <Button onClick={handleCreateDocument} disabled={loading}>
+                    {loading ? <Loader2 className="animate-spin" /> : <Play />}
+                    <span>Run Code</span>
+                </Button>
+            </div>
         )}
       </CardContent>
     </Card>

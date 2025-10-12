@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Play, Wand2 } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -25,17 +25,24 @@ export function DeleteForm() {
   const [docId, setDocId] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
-  const handleDeleteDocument = async () => {
+  const handleGenerateCode = () => {
     if (!collectionName || !docId) {
         toast({ variant: "destructive", title: "Collection name and Document ID are required." });
         return;
     }
+    const code = `Database.collection('${collectionName}').delete('${docId}');`;
+    setGeneratedCode(code);
+  };
+
+  const handleDeleteDocument = async () => {
     setLoading(true);
     try {
         await Database.collection(collectionName).delete(docId);
         toast({ title: "Document Deleted", description: "The document has been deleted successfully." });
         setDocId('');
+        setGeneratedCode(null);
     } catch (e: any) {
         console.error("Delete error:", e);
         toast({ variant: "destructive", title: "Failed to delete document", description: e.message });
@@ -73,29 +80,45 @@ export function DeleteForm() {
                 />
             </div>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={loading || !collectionName || !docId}>
-                <Trash2 />
-                <span>Delete Document</span>
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the document
-                with ID <span className="font-bold font-mono">{docId}</span> from the '{collectionName}' collection.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteDocument} disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : "Continue"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        
+        <Button onClick={handleGenerateCode} disabled={!collectionName || !docId}>
+            <Wand2 />
+            <span>Generate Code</span>
+        </Button>
+
+        {generatedCode && (
+            <div className="space-y-4 pt-4">
+                <h3 className="text-md font-medium">Generated Code</h3>
+                <div className="rounded-lg border bg-card-foreground/5 font-code">
+                    <pre className="overflow-x-auto p-4 text-sm text-card-foreground">
+                        <code>{generatedCode}</code>
+                    </pre>
+                </div>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={loading}>
+                            <Play />
+                            <span>Run Code</span>
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the document
+                            with ID <span className="font-bold font-mono">{docId}</span> from the '{collectionName}' collection.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteDocument} disabled={loading}>
+                            {loading ? <Loader2 className="animate-spin" /> : "Continue"}
+                        </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, PlusCircle, XCircle, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Search, PlusCircle, XCircle, Pencil, Trash2, Play, Wand2 } from 'lucide-react';
 import { Database } from '@/lib/orm';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -55,15 +55,50 @@ export function GetForm() {
   const [editingDoc, setEditingDoc] = useState<any>(null);
   const [editingDocContent, setEditingDocContent] = useState('');
 
-  const handleFetch = async () => {
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+
+  const handleGenerateCode = () => {
     if (!collectionName) {
       toast({
         variant: 'destructive',
         title: 'Collection Name Required',
-        description: 'Please enter a collection name to fetch documents.',
+        description: 'Please enter a collection name to generate code.',
       });
       return;
     }
+
+    let code = `Database.collection('${collectionName}')`;
+
+    whereClauses.forEach(clause => {
+      if (clause.field && clause.value) {
+        const valueStr = isNaN(Number(clause.value)) ? `'${clause.value}'` : clause.value;
+        code += `.where('${clause.field}', '${clause.operator}', ${valueStr})`;
+      }
+    });
+
+    if (sortBy && sortBy.field) {
+      code += `.sortBy('${sortBy.field}', '${sortBy.direction}')`;
+    }
+    
+    if (limit !== null && limit > 0) {
+      code += `.limit(${limit})`;
+    }
+
+    if (offset !== null && offset >= 0) {
+      code += `.offset(${offset})`;
+    }
+
+    const fieldsToFetch = fields.split(',').map(f => f.trim()).filter(f => f);
+    const fieldsArg = fieldsToFetch.map(f => `'${f}'`).join(', ');
+
+    code += `.getDocuments(${fieldsArg})`;
+
+    setGeneratedCode(code);
+    setDocuments([]);
+    setError(null);
+  };
+
+  const handleFetch = async () => {
     setLoading(true);
     setError(null);
     setDocuments([]);
@@ -175,7 +210,7 @@ export function GetForm() {
             <CardHeader>
             <CardTitle>Build Your Query</CardTitle>
             <CardDescription>
-                Enter a collection name and add conditions to build your database query.
+                Enter a collection name and add conditions to generate the query code.
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -250,15 +285,27 @@ export function GetForm() {
             </div>
 
             <div className="flex flex-wrap gap-2 pt-4">
-                <Button type="submit" onClick={handleFetch} disabled={loading || !collectionName}>
-                    {loading ? (
-                    <Loader2 className="animate-spin" />
-                    ) : (
-                    <Search />
-                    )}
-                    <span>Fetch Documents</span>
+                <Button type="submit" onClick={handleGenerateCode} disabled={!collectionName}>
+                    <Wand2 />
+                    <span>Generate Code</span>
                 </Button>
             </div>
+            
+            {generatedCode && (
+                <div className="space-y-4 pt-4">
+                    <h3 className="text-md font-medium">Generated Code</h3>
+                    <div className="rounded-lg border bg-card-foreground/5 font-code">
+                        <pre className="overflow-x-auto p-4 text-sm text-card-foreground">
+                            <code>{generatedCode}</code>
+                        </pre>
+                    </div>
+                    <Button onClick={handleFetch} disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin" /> : <Play />}
+                        <span>Run Code</span>
+                    </Button>
+                </div>
+            )}
+
             </CardContent>
         </Card>
 
@@ -293,9 +340,9 @@ export function GetForm() {
                                 <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
                             </div>
                             {Object.entries(doc).map(([key, value]) => (
-                                <div key={key} className="flex flex-col gap-1">
-                                    <span className="font-semibold text-muted-foreground">{key}</span>
-                                    <pre className="font-mono text-foreground break-words bg-muted/50 p-2 rounded text-xs">
+                                <div key={key} className="grid grid-cols-[1fr_2fr] items-center gap-2">
+                                    <span className="font-semibold text-muted-foreground truncate">{key}</span>
+                                    <pre className="font-mono text-foreground break-words bg-muted/50 p-2 rounded text-xs col-span-1">
                                         {typeof value === 'object' && value !== null ? JSON.stringify(value, null, 2) : String(value)}
                                     </pre>
                                 </div>
@@ -307,7 +354,7 @@ export function GetForm() {
                 </Accordion>
             ) : (
                 <p className="text-muted-foreground text-center py-10">
-                No documents to display.
+                No documents to display. Run a query to see results.
                 </p>
             )}
             </CardContent>
@@ -333,4 +380,3 @@ export function GetForm() {
     </>
   );
 }
-
