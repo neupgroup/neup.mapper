@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Database, Settings, Code, Table, FileJson } from 'lucide-react';
+import { Database, Settings, Code, Table, FileJson, BookText } from 'lucide-react';
 
 const navItems = [
   {
@@ -25,6 +25,11 @@ const navItems = [
     href: '/schemas',
     label: 'Schema Builder',
     icon: FileJson,
+  },
+  {
+    href: '/documentation',
+    label: 'Documentation',
+    icon: BookText,
   },
   {
     href: '/configure',
