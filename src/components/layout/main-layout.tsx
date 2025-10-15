@@ -1,3 +1,4 @@
+
 'use client';
 import type { ReactNode } from 'react';
 import { MainNav } from '@/components/layout/main-nav';
@@ -96,7 +97,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
         open={isMobileMenuOpen}
         onOpenChange={setIsMobileMenuOpen}
       >
-        <div className="relative w-full min-h-screen">
+        <div className="relative w-full min-h-screen overflow-x-hidden">
           <header className="sticky top-0 z-20 w-full border-b bg-background/80 backdrop-blur-sm">
             <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-4 md:gap-8">
