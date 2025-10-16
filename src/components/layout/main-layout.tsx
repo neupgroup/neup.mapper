@@ -84,10 +84,10 @@ export function MainLayout({ children }: { children: ReactNode }) {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'scroll';
+      document.body.style.overflow = '';
     }
     return () => {
-      document.body.style.overflow = 'scroll';
+      document.body.style.overflow = '';
     };
   }, [isMobileMenuOpen]);
 
@@ -140,9 +140,9 @@ export function MainLayout({ children }: { children: ReactNode }) {
             </div>
           </CollapsibleContent>
 
-          <div className="mx-auto flex w-full max-w-[1440px]">
+          <div className="mx-auto flex w-full max-w-[1440px] pt-16">
             <AppSidebar />
-            <main className="flex-1 pt-16">
+            <main className="flex-1 h-[calc(100vh-4rem)] overflow-y-auto">
               <div className="p-4 sm:p-6 md:p-8">
                 {children}
               </div>
