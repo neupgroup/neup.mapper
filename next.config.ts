@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  transpilePackages: ['@neupgroup/mapper'],
   images: {
     remotePatterns: [
       {
