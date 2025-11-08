@@ -35,6 +35,7 @@ export async function getDocuments(
     offset: number | null;
     sortBy: any | null;
     fields: string[];
+    query?: Record<string, string>;
   },
   connectionName?: string
 ): Promise<DocumentData[]> {
@@ -46,8 +47,16 @@ export async function getDocuments(
   });
 }
 
-export async function addDocument(collectionName: string, data: DocumentData, connectionName?: string): Promise<string> {
+export async function addDocument(
+  collectionName: string,
+  data: DocumentData,
+  connectionName?: string,
+  requestOptions?: { bodyType?: 'json' | 'form' | 'urlencoded'; query?: Record<string, string> }
+): Promise<string> {
   const adapter = getAdapter(connectionName);
+  if ((getDbConfig(connectionName ?? 'default')?.dbType) === 'API') {
+    return (adapter as any).addDocument(collectionName, data, connectionName, requestOptions);
+  }
   return adapter.addDocument(collectionName, data, connectionName);
 }
 
@@ -55,13 +64,25 @@ export async function updateDocument(
   collectionName: string,
   docId: string,
   data: DocumentData,
-  connectionName?: string
+  connectionName?: string,
+  requestOptions?: { bodyType?: 'json' | 'form' | 'urlencoded'; query?: Record<string, string>; method?: 'PUT' | 'PATCH' }
 ): Promise<void> {
   const adapter = getAdapter(connectionName);
+  if ((getDbConfig(connectionName ?? 'default')?.dbType) === 'API') {
+    return (adapter as any).updateDocument(collectionName, docId, data, connectionName, requestOptions);
+  }
   return adapter.updateDocument(collectionName, docId, data, connectionName);
 }
 
-export async function deleteDocument(collectionName: string, docId: string, connectionName?: string): Promise<void> {
+export async function deleteDocument(
+  collectionName: string,
+  docId: string,
+  connectionName?: string,
+  requestOptions?: { query?: Record<string, string> }
+): Promise<void> {
   const adapter = getAdapter(connectionName);
+  if ((getDbConfig(connectionName ?? 'default')?.dbType) === 'API') {
+    return (adapter as any).deleteDocument(collectionName, docId, connectionName, requestOptions);
+  }
   return adapter.deleteDocument(collectionName, docId, connectionName);
 }

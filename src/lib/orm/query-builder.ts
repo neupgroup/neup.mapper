@@ -17,6 +17,10 @@ export class Connection {
   collection(collectionName: string): QueryBuilder {
     return new QueryBuilder(collectionName, this.name);
   }
+  // alias to allow conn.connection('<endpoint>') chaining for API ergonomics
+  connection(resource: string): QueryBuilder {
+    return this.collection(resource);
+  }
 }
 
 export class QueryBuilder {
@@ -26,6 +30,9 @@ export class QueryBuilder {
   private offsetCount: number | null = null;
   private sorting: any | null = null;
   private connectionName?: string;
+  private extraQueryParams?: Record<string, string>;
+  private bodyKind?: 'json' | 'form' | 'urlencoded';
+  private updateMethod?: 'PUT' | 'PATCH';
 
   constructor(collectionName: string, connectionName?: string) {
     this.collectionName = collectionName;
@@ -52,6 +59,21 @@ export class QueryBuilder {
     return this;
   }
 
+  queryParams(params: Record<string, string>) {
+    this.extraQueryParams = params;
+    return this;
+  }
+
+  bodyType(kind: 'json' | 'form' | 'urlencoded') {
+    this.bodyKind = kind;
+    return this;
+  }
+
+  method(m: 'PUT' | 'PATCH') {
+    this.updateMethod = m;
+    return this;
+  }
+
   async get(...fields: string[]): Promise<DocumentData[]> {
     return getWithConnection(
       this.collectionName,
@@ -61,6 +83,7 @@ export class QueryBuilder {
         offset: this.offsetCount,
         sortBy: this.sorting,
         fields,
+        query: this.extraQueryParams,
       },
       this.connectionName
     );
@@ -81,14 +104,23 @@ export class QueryBuilder {
   }
 
   async add(data: DocumentData) {
-    return addDocumentWithConnection(this.collectionName, data, this.connectionName);
+    return addDocumentWithConnection(this.collectionName, data, this.connectionName, {
+      bodyType: this.bodyKind,
+      query: this.extraQueryParams,
+    });
   }
 
   async update(docId: string, data: DocumentData) {
-    return updateDocumentWithConnection(this.collectionName, docId, data, this.connectionName);
+    return updateDocumentWithConnection(this.collectionName, docId, data, this.connectionName, {
+      bodyType: this.bodyKind,
+      query: this.extraQueryParams,
+      method: this.updateMethod,
+    });
   }
 
   async delete(docId: string) {
-    return deleteDocumentWithConnection(this.collectionName, docId, this.connectionName);
+    return deleteDocumentWithConnection(this.collectionName, docId, this.connectionName, {
+      query: this.extraQueryParams,
+    });
   }
 }

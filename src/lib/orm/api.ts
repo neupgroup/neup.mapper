@@ -11,6 +11,7 @@ interface QueryOptions {
   sortBy: { field: string; direction: 'asc' | 'desc' } | null;
   fields: string[];
   connectionName?: string;
+  query?: Record<string, string>;
 }
 
 function getHeaders(connectionName?: string): Record<string, string> {
@@ -52,6 +53,9 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   const url = new URL(`${basePath}${getEndpoint}`);
 
   filters.forEach(f => url.searchParams.append(f.field, f.value));
+  if (options.query) {
+    Object.entries(options.query).forEach(([k, v]) => url.searchParams.append(k, v));
+  }
 
   if (sortBy) {
     url.searchParams.append('_sort', sortBy.field);
@@ -89,7 +93,13 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   return Array.isArray(data) ? data : [data];
 }
 
-export async function addDocument(collectionName: string, data: DocumentData, connectionName?: string): Promise<string> {
+type RequestOptions = { bodyType?: 'json' | 'form' | 'urlencoded'; query?: Record<string, string> };
+export async function addDocument(
+  collectionName: string,
+  data: DocumentData,
+  connectionName?: string,
+  requestOptions?: RequestOptions
+): Promise<string> {
     const apiConfig = getDbConfig(connectionName ?? 'default');
     
     if (!apiConfig || apiConfig.dbType !== 'API') {
@@ -99,11 +109,30 @@ export async function addDocument(collectionName: string, data: DocumentData, co
     const { basePath } = apiConfig;
     const createEndpoint = `/${collectionName}`;
     const headers = getHeaders(connectionName);
-    
-    const response = await fetch(`${basePath}${createEndpoint}`, {
+    const url = new URL(`${basePath}${createEndpoint}`);
+    if (requestOptions?.query) {
+      Object.entries(requestOptions.query).forEach(([k, v]) => url.searchParams.append(k, v));
+    }
+    let body: any;
+    const bodyType = requestOptions?.bodyType ?? 'json';
+    if (bodyType === 'form') {
+      const form = new FormData();
+      Object.entries(data || {}).forEach(([k, v]) => form.append(k, String(v)));
+      body = form;
+      delete (headers as any)['Content-Type'];
+    } else if (bodyType === 'urlencoded') {
+      const params = new URLSearchParams();
+      Object.entries(data || {}).forEach(([k, v]) => params.append(k, String(v)));
+      body = params;
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else {
+      body = JSON.stringify(data);
+      headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(url.toString(), {
        method: 'POST',
-       headers,
-       body: JSON.stringify(data),
+        headers,
+        body,
     });
     if (!response.ok) {
         const errorBody = await response.text();
@@ -113,7 +142,13 @@ export async function addDocument(collectionName: string, data: DocumentData, co
     return result.id;
 }
 
-export async function updateDocument(collectionName: string, docId: string, data: DocumentData, connectionName?: string): Promise<void> {
+export async function updateDocument(
+  collectionName: string,
+  docId: string,
+  data: DocumentData,
+  connectionName?: string,
+  requestOptions?: RequestOptions & { method?: 'PUT' | 'PATCH' }
+): Promise<void> {
     const apiConfig = getDbConfig(connectionName ?? 'default');
     
     if (!apiConfig || apiConfig.dbType !== 'API') {
@@ -123,13 +158,30 @@ export async function updateDocument(collectionName: string, docId: string, data
     const { basePath } = apiConfig;
     const updateEndpoint = `/${collectionName}/{id}`;
     const headers = getHeaders(connectionName);
-    
-    const url = `${basePath}${updateEndpoint.replace('{id}', docId)}`;
-    
-    const response = await fetch(url, {
-       method: 'PUT', // or PATCH
+    const urlObj = new URL(`${basePath}${updateEndpoint.replace('{id}', docId)}`);
+    if (requestOptions?.query) {
+      Object.entries(requestOptions.query).forEach(([k, v]) => urlObj.searchParams.append(k, v));
+    }
+    let body: any;
+    const bodyType = requestOptions?.bodyType ?? 'json';
+    if (bodyType === 'form') {
+      const form = new FormData();
+      Object.entries(data || {}).forEach(([k, v]) => form.append(k, String(v)));
+      body = form;
+      delete (headers as any)['Content-Type'];
+    } else if (bodyType === 'urlencoded') {
+      const params = new URLSearchParams();
+      Object.entries(data || {}).forEach(([k, v]) => params.append(k, String(v)));
+      body = params;
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else {
+      body = JSON.stringify(data);
+      headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(urlObj.toString(), {
+       method: requestOptions?.method ?? 'PUT',
        headers,
-       body: JSON.stringify(data),
+       body,
     });
     if (!response.ok) {
         const errorBody = await response.text();
@@ -137,7 +189,12 @@ export async function updateDocument(collectionName: string, docId: string, data
     }
 }
 
-export async function deleteDocument(collectionName: string, docId: string, connectionName?: string): Promise<void> {
+export async function deleteDocument(
+  collectionName: string,
+  docId: string,
+  connectionName?: string,
+  requestOptions?: { query?: Record<string, string> }
+): Promise<void> {
     const apiConfig = getDbConfig(connectionName ?? 'default');
 
     if (!apiConfig || apiConfig.dbType !== 'API') {
@@ -147,10 +204,11 @@ export async function deleteDocument(collectionName: string, docId: string, conn
     const { basePath } = apiConfig;
     const deleteEndpoint = `/${collectionName}/{id}`;
     const headers = getHeaders(connectionName);
-    
-    const url = `${basePath}${deleteEndpoint.replace('{id}', docId)}`;
-    
-    const response = await fetch(url, { method: 'DELETE', headers });
+    const urlObj = new URL(`${basePath}${deleteEndpoint.replace('{id}', docId)}`);
+    if (requestOptions?.query) {
+      Object.entries(requestOptions.query).forEach(([k, v]) => urlObj.searchParams.append(k, v));
+    }
+    const response = await fetch(urlObj.toString(), { method: 'DELETE', headers });
     if (!response.ok) {
         const errorBody = await response.text();
         throw new Error(`API delete failed: ${response.statusText}. Body: ${errorBody}`);

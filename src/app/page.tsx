@@ -1,5 +1,6 @@
 
 import { MainLayout } from '@/components/layout/main-layout';
+import LocalStorageWipeSection from '@/components/home/localstorage-wipe';
 
 export default function Home() {
   return (
@@ -13,6 +14,8 @@ export default function Home() {
             AI features have been removed. Use the navigation to explore other sections.
           </p>
         </div>
+        {/* Show wipe section when localStorage has data */}
+        <LocalStorageWipeSection />
       </div>
     </MainLayout>
   );

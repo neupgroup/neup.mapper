@@ -3,7 +3,7 @@
 
 import type { DocumentData } from 'firebase/firestore';
 import { createOrm, type DbAdapter, type QueryOptions } from '@neupgroup/mapper';
-import { setDbConfig, listRuntimeConfigs, getDbConfig } from '@/lib/orm/config';
+import { setDbConfig, listRuntimeConfigs, getDbConfig, clearDbConfig } from '@/lib/orm/config';
 import {
   getDocuments as getDocumentsOrm,
   addDocument as addDocumentOrm,
@@ -63,6 +63,22 @@ export async function setRuntimeDbConfig(config: any, name?: string) {
   setDbConfig(config, name ?? 'default');
 }
 
+// Update an existing runtime DB config (override in-place)
+export async function updateRuntimeDbConfig(config: any, name?: string) {
+  if (!config || !config.dbType) {
+    throw new Error('Invalid config: missing dbType');
+  }
+  const key = name ?? 'default';
+  clearDbConfig(key);
+  setDbConfig(config, key);
+}
+
+// Delete a named runtime DB config
+export async function deleteRuntimeDbConfig(name: string) {
+  if (!name) return;
+  clearDbConfig(name);
+}
+
 // Named connection variants using local ORM directly
 export async function getDocumentsWithConnection(
   collectionName: string,
@@ -72,6 +88,7 @@ export async function getDocumentsWithConnection(
     offset: number | null;
     sortBy: any | null;
     fields: string[];
+    query?: Record<string, string>;
   },
   connectionName?: string
 ): Promise<DocumentData[]> {
@@ -87,6 +104,7 @@ export async function getWithConnection(
     offset: number | null;
     sortBy: any | null;
     fields: string[];
+    query?: Record<string, string>;
   },
   connectionName?: string
 ): Promise<DocumentData[]> {
@@ -112,30 +130,39 @@ export async function getOneWithConnection(
 export async function addDocumentWithConnection(
   collectionName: string,
   data: DocumentData,
-  connectionName?: string
+  connectionName?: string,
+  requestOptions?: { bodyType?: 'json' | 'form' | 'urlencoded'; query?: Record<string, string> }
 ): Promise<string> {
-  return addDocumentOrm(collectionName, data, connectionName);
+  return addDocumentOrm(collectionName, data, connectionName, requestOptions as any);
 }
 
 export async function updateDocumentWithConnection(
   collectionName: string,
   docId: string,
   data: DocumentData,
-  connectionName?: string
+  connectionName?: string,
+  requestOptions?: { bodyType?: 'json' | 'form' | 'urlencoded'; query?: Record<string, string>; method?: 'PUT' | 'PATCH' }
 ): Promise<void> {
-  return updateDocumentOrm(collectionName, docId, data, connectionName);
+  return updateDocumentOrm(collectionName, docId, data, connectionName, requestOptions as any);
 }
 
 export async function deleteDocumentWithConnection(
   collectionName: string,
   docId: string,
-  connectionName?: string
+  connectionName?: string,
+  requestOptions?: { query?: Record<string, string> }
 ): Promise<void> {
-  return deleteDocumentOrm(collectionName, docId, connectionName);
+  return deleteDocumentOrm(collectionName, docId, connectionName, requestOptions as any);
 }
 
 export async function listConnections(): Promise<string[]> {
-  return listRuntimeConfigs();
+  // Include runtime-registered connections and add 'default' when env config exists
+  const names = listRuntimeConfigs();
+  const defaultCfg = getDbConfig('default');
+  if (defaultCfg && !names.includes('default')) {
+    return ['default', ...names];
+  }
+  return names;
 }
 
 // Retrieve the current runtime configuration for a named connection
