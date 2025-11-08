@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Loader2, Search, PlusCircle, XCircle, Pencil, Trash2, Play, Wand2 } fro
 import { Connection } from '@/lib/orm/query-builder';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { listConnections } from '@/app/actions';
 import {
   Accordion,
   AccordionContent,
@@ -62,6 +63,18 @@ export function GetForm({ nouns }: { nouns?: Nouns }) {
   const [editingDocContent, setEditingDocContent] = useState('');
 
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [connectionName, setConnectionName] = useState<string>('default');
+  const [availableConnections, setAvailableConnections] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const names = await listConnections();
+        setAvailableConnections(names);
+        if (names.includes('default')) setConnectionName('default');
+      } catch {}
+    })();
+  }, []);
 
   const handleGenerateCode = () => {
     if (!collectionName) {
@@ -73,7 +86,9 @@ export function GetForm({ nouns }: { nouns?: Nouns }) {
       return;
     }
 
-    let code = `new Connection().collection('${collectionName}')`;
+    let code = connectionName && connectionName !== 'default'
+      ? `new Connection('${connectionName}').collection('${collectionName}')`
+      : `new Connection().collection('${collectionName}')`;
 
     whereClauses.forEach(clause => {
       if (clause.field && clause.value) {
@@ -109,7 +124,7 @@ export function GetForm({ nouns }: { nouns?: Nouns }) {
     setError(null);
     setDocuments([]);
     try {
-      let query = new Connection().collection(collectionName);
+      let query = new Connection(connectionName && connectionName !== 'default' ? connectionName : undefined).collection(collectionName);
       
       whereClauses.forEach(clause => {
         if (clause.field && clause.value) {
@@ -220,6 +235,21 @@ export function GetForm({ nouns }: { nouns?: Nouns }) {
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-medium">Connection</label>
+                <Select value={connectionName} onValueChange={setConnectionName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select connection" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['default', ...availableConnections.filter(n => n !== 'default')].map((name) => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col space-y-2">
                     <label htmlFor="collection-name" className="text-sm font-medium">{cap(container)} Name</label>

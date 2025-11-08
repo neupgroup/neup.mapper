@@ -43,6 +43,7 @@ type DatabaseType = typeof databaseOptions[number]["value"];
 
 const baseSchema = z.object({
   dbType: z.enum(["MongoDB", "Firestore", "SQL", "API"]),
+  connectionName: z.string().min(1, "Connection name is required.").default('default'),
 });
 
 const mongoSchema = baseSchema.extend({
@@ -91,13 +92,18 @@ export function ConfigureDBForm() {
   const [loading, setLoading] = useState(false);
   const [dbType, setDbType] = useState<DatabaseType>("Firestore");
   const { toast } = useToast();
-  const [envContent, setEnvContent] = useState<string | null>(null);
+  // Track generated collective .env content for all configured connections
+  const [envContentAll, setEnvContentAll] = useState<string | null>(null);
+  const [connections, setConnections] = useState<string[]>([]);
+  const [connectionDbTypes, setConnectionDbTypes] = useState<Record<string, DatabaseType>>({});
 
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       dbType: "Firestore",
+      // @ts-ignore
+      connectionName: 'default',
     },
   });
 
@@ -107,7 +113,7 @@ export function ConfigureDBForm() {
     name: "headers",
   });
 
-   const populateEnvContent = (values: FormValues) => {
+   const populateEnvContent = (values: any) => {
     let content = `DB_TYPE=${values.dbType}\n`;
     switch (values.dbType) {
         case 'Firestore':
@@ -118,6 +124,11 @@ FIRESTORE_PROJECT_ID=${values.projectId}
 FIRESTORE_STORAGE_BUCKET=${values.storageBucket}
 FIRESTORE_MESSAGING_SENDER_ID=${values.messagingSenderId}
 FIRESTORE_APP_ID=${values.appId}
+`;
+            break;
+        case 'MongoDB':
+            content += `
+MONGODB_CONNECTION_STRING=${values.connectionString}
 `;
             break;
         case 'API':
@@ -147,39 +158,83 @@ SQL_DATABASE=${values.database}
 
   const handleDbTypeChange = (value: DatabaseType) => {
     setDbType(value);
-    setEnvContent(null);
-    const newDefaults = { dbType: value };
+    // No env generation during creation
+    const newDefaults = { dbType: value, connectionName: form.getValues().connectionName || 'default' };
     // @ts-ignore
     form.reset(newDefaults);
   };
 
-  async function onSubmit(values: FormValues) {
-    setLoading(true);
-    setEnvContent(null);
-    try {
-      const content = populateEnvContent(values);
-      setEnvContent(content);
-      
-      toast({
-        title: "Content Generated",
-        description: `Your .env file content has been generated and is ready for download.`,
-      });
-    } catch (error) {
-      console.error("Error generating configuration:", error);
-      toast({
-        variant: "destructive",
-        title: "An error occurred",
-        description: "Failed to generate configuration. Please try again.",
-      });
-    } finally {
-      setLoading(false);
+  // Build an env block for a specific connection, with suffixed keys for non-default
+  const toEnvBlock = (name: string, cfg: any) => {
+    const suffix = name === 'default' ? '' : `__${name.toUpperCase()}`;
+    let content = `# Connection: ${name}\n`;
+    content += `DB_TYPE${suffix}=${cfg.dbType}\n`;
+    switch (cfg.dbType) {
+      case 'Firestore':
+        content += `FIRESTORE_API_KEY${suffix}=${cfg.apiKey}\n`;
+        content += `FIRESTORE_AUTH_DOMAIN${suffix}=${cfg.authDomain}\n`;
+        content += `FIRESTORE_PROJECT_ID${suffix}=${cfg.projectId}\n`;
+        content += `FIRESTORE_STORAGE_BUCKET${suffix}=${cfg.storageBucket}\n`;
+        content += `FIRESTORE_MESSAGING_SENDER_ID${suffix}=${cfg.messagingSenderId}\n`;
+        content += `FIRESTORE_APP_ID${suffix}=${cfg.appId}\n`;
+        break;
+      case 'MongoDB':
+        content += `MONGODB_CONNECTION_STRING${suffix}=${cfg.connectionString}\n`;
+        if (cfg.dbName) content += `MONGODB_DB_NAME${suffix}=${cfg.dbName}\n`;
+        break;
+      case 'API':
+        content += `API_BASE_PATH${suffix}=${cfg.basePath}\n`;
+        content += `API_KEY${suffix}=${cfg.apiKey || ''}\n`;
+        if (cfg.headers && Array.isArray(cfg.headers)) {
+          cfg.headers.forEach((h: any, index: number) => {
+            if (h.key && h.value) {
+              content += `API_HEADER_${index + 1}_KEY${suffix}=${h.key}\n`;
+              content += `API_HEADER_${index + 1}_VALUE${suffix}=${h.value}\n`;
+            }
+          });
+        }
+        break;
+      case 'SQL':
+        content += `SQL_HOST${suffix}=${cfg.host}\n`;
+        content += `SQL_PORT${suffix}=${cfg.port}\n`;
+        content += `SQL_USER${suffix}=${cfg.user}\n`;
+        content += `SQL_PASSWORD${suffix}=${cfg.password || ''}\n`;
+        content += `SQL_DATABASE${suffix}=${cfg.database}\n`;
+        break;
+      default:
+        break;
     }
-  }
+    return content + '\n';
+  };
 
-  const downloadEnvFile = () => {
-    if (!envContent) return;
+  const generateEnvForAllConnections = async () => {
+    try {
+      const { getRuntimeDbConfig } = await import('@/app/actions');
+      const sections: string[] = [];
+      const filtered = connections.filter((n) => connectionDbTypes[n] === dbType);
+      for (const name of filtered) {
+        const cfg = await getRuntimeDbConfig(name);
+        if (cfg) {
+          sections.push(toEnvBlock(name, cfg));
+        }
+      }
+      if (sections.length === 0) {
+        toast({ variant: 'destructive', title: 'No connections', description: `No configured ${dbType} connections found.` });
+        return;
+      }
+      const header = '# Collective .env for all configured connections\n# Non-default connections use __NAME suffixes\n\n';
+      const content = header + sections.join('\n');
+      setEnvContentAll(content);
+      toast({ title: 'Collective .env generated', description: 'Generated .env content for all configured connections.' });
+    } catch (error) {
+      console.error('Error generating collective .env:', error);
+      toast({ variant: 'destructive', title: 'Failed to generate .env', description: 'Please try again.' });
+    }
+  };
 
-    const blob = new Blob([envContent], { type: 'text/plain' });
+  const downloadCollectiveEnv = () => {
+    if (!envContentAll) return;
+    const blob = new Blob([envContentAll], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -189,6 +244,92 @@ SQL_DATABASE=${values.database}
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const applyRuntimeConfig = async () => {
+    try {
+      const values = form.getValues();
+      const name = (values as any).connectionName || 'default';
+      // Prevent duplicate name or override
+      if (connections.includes(name)) {
+        toast({ variant: 'destructive', title: 'Duplicate connection name', description: `Connection '${name}' already exists. Please use a different name.` });
+        return;
+      }
+      const base: any = { dbType: values.dbType };
+      let config: any = base;
+      switch (values.dbType) {
+        case 'Firestore':
+          config = {
+            ...base,
+            apiKey: (values as any).apiKey,
+            authDomain: (values as any).authDomain,
+            projectId: (values as any).projectId,
+            storageBucket: (values as any).storageBucket,
+            messagingSenderId: (values as any).messagingSenderId,
+            appId: (values as any).appId,
+          };
+          break;
+        case 'MongoDB':
+          config = { ...base, connectionString: (values as any).connectionString };
+          break;
+        case 'SQL':
+          config = {
+            ...base,
+            host: (values as any).host,
+            port: (values as any).port,
+            user: (values as any).user,
+            password: (values as any).password,
+            database: (values as any).database,
+          };
+          break;
+        case 'API':
+          config = {
+            ...base,
+            basePath: (values as any).basePath,
+            apiKey: (values as any).apiKey,
+            headers: (values as any).headers,
+          };
+          break;
+      }
+      const { setRuntimeDbConfig } = await import('@/app/actions');
+      await setRuntimeDbConfig(config, name);
+      try {
+        const { listConnections, getRuntimeDbConfig } = await import('@/app/actions');
+        const names = await listConnections();
+        setConnections(names);
+        const types: Record<string, DatabaseType> = {} as any;
+        for (const n of names) {
+          try {
+            const cfg = await getRuntimeDbConfig(n);
+            if (cfg?.dbType) types[n] = cfg.dbType as DatabaseType;
+          } catch {}
+        }
+        setConnectionDbTypes(types);
+      } catch {}
+      toast({ title: 'Runtime Config Applied', description: 'Database configuration has been applied for this session.' });
+    } catch (e: any) {
+      console.error(e);
+      const msg = typeof e?.message === 'string' ? e.message : 'Please check your inputs and try again.';
+      toast({ variant: 'destructive', title: 'Failed to apply config', description: msg });
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { listConnections, getRuntimeDbConfig } = await import('@/app/actions');
+        const names = await listConnections();
+        setConnections(names);
+        const types: Record<string, DatabaseType> = {} as any;
+        for (const n of names) {
+          try {
+            const cfg = await getRuntimeDbConfig(n);
+            if (cfg?.dbType) types[n] = cfg.dbType as DatabaseType;
+          } catch {}
+        }
+        setConnectionDbTypes(types);
+      } catch {}
+    })();
+  }, []);
   
   const renderFormFields = () => {
     switch (dbType) {
@@ -455,18 +596,34 @@ SQL_DATABASE=${values.database}
         <CardHeader>
           <CardTitle>Database Credentials</CardTitle>
           <CardDescription>
-            Enter the details for your database connection. This will generate content for your <code>.env</code> file.
+            Enter the details for your database connection. Apply the runtime config to register a connection.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormItem>
-                <FormLabel>Database Type</FormLabel>
-                <Select
-                  onValueChange={(value) => handleDbTypeChange(value as DatabaseType)}
-                  value={dbType}
-                >
+            <form className="space-y-6">
+          <FormItem>
+            <FormLabel>Connection Name</FormLabel>
+            <FormField
+              control={form.control}
+              name="connectionName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input placeholder="default or custom name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </FormItem>
+          
+          <FormItem>
+            <FormLabel>Database Type</FormLabel>
+            <Select
+              onValueChange={(value) => handleDbTypeChange(value as DatabaseType)}
+              value={dbType}
+            >
                   <FormControl>
                     <SelectTrigger className="w-full sm:w-64">
                       <SelectValue placeholder="Select a database type" />
@@ -489,26 +646,51 @@ SQL_DATABASE=${values.database}
               {renderFormFields()}
               
               <div className="flex flex-wrap gap-4">
-                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                  {loading ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Wand2 />
-                  )}
-                  <span>{loading ? "Generating..." : "Generate .env Content"}</span>
+                <Button type="button" variant="outline" onClick={applyRuntimeConfig} className="w-full sm:w-auto">
+                  <Database />
+                  <span>Apply Runtime Config</span>
                 </Button>
-
-                {envContent && (
-                    <Button type="button" variant="secondary" onClick={downloadEnvFile} className="w-full sm:w-auto">
-                        <Download />
-                        <span>Download .env File</span>
-                    </Button>
-                )}
               </div>
             </form>
           </Form>
         </CardContent>
       </Card>
+      {connections.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Configured Connections</CardTitle>
+            <CardDescription>
+              Filtering by selected database type: <code>{dbType}</code>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <ul className="list-disc pl-6 space-y-1">
+                {connections
+                  .filter((name) => connectionDbTypes[name] === dbType)
+                  .map((name) => (
+                    <li key={name}><code>{name}</code></li>
+                  ))}
+              </ul>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={generateEnvForAllConnections}
+                  disabled={connections.filter((n) => connectionDbTypes[n] === dbType).length === 0}
+                >
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Generate collective .env
+                </Button>
+                <Button type="button" size="sm" variant="secondary" onClick={downloadCollectiveEnv} disabled={!envContentAll}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download .env
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

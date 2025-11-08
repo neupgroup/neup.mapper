@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { listConnections } from '@/app/actions';
 
 type Schema = {
   collectionName: string;
@@ -38,6 +40,8 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
   const { toast } = useToast();
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [formDataForExec, setFormDataForExec] = useState<any>(null);
+  const [connectionName, setConnectionName] = useState<string>('default');
+  const [availableConnections, setAvailableConnections] = useState<string[]>([]);
 
 
   const form = useForm();
@@ -52,6 +56,16 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
     } catch (error) {
       console.error('Failed to load schemas from local storage', error);
     }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const names = await listConnections();
+        setAvailableConnections(names);
+        if (names.includes('default')) setConnectionName('default');
+      } catch {}
+    })();
   }, []);
 
   useEffect(() => {
@@ -108,7 +122,8 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
        return;
     }
     
-    setGeneratedCode(`new Connection().collection('${collectionName}').add(${docDataString});`);
+    const connCtor = connectionName && connectionName !== 'default' ? `new Connection('${connectionName}')` : 'new Connection()';
+    setGeneratedCode(`${connCtor}.collection('${collectionName}').add(${docDataString});`);
     setFormDataForExec(dataForExec);
   };
 
@@ -147,7 +162,9 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
     
     setLoading(true);
     try {
-      const newId = await new Connection().collection(collectionName).add(docData);
+      const newId = await new Connection(connectionName && connectionName !== 'default' ? connectionName : undefined)
+        .collection(collectionName)
+        .add(docData);
       toast({ title: `${cap(item)} Created`, description: `New ${item} added with ID: ${newId}` });
       if (useManualJson) {
         setNewDocContent('');
@@ -190,6 +207,19 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-col space-y-2">
+          <Label className="text-sm font-medium">Connection</Label>
+          <Select value={connectionName} onValueChange={setConnectionName}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select connection" />
+            </SelectTrigger>
+            <SelectContent>
+              {['default', ...availableConnections.filter(n => n !== 'default')].map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex flex-col space-y-2">
           <Label htmlFor="collection-name" className="text-sm font-medium">{cap(container)} Name</Label>
           <Input

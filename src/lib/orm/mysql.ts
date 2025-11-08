@@ -11,10 +11,11 @@ interface QueryOptions {
   offset: number | null;
   sortBy: { field: string; direction: 'asc' | 'desc' } | null;
   fields: string[];
+  connectionName?: string;
 }
 
-async function getConnection() {
-    const config = getDbConfig();
+async function getConnection(connectionName?: string) {
+    const config = getDbConfig(connectionName ?? 'default');
     if (config?.dbType !== 'SQL') {
         throw new Error('SQL database is not configured in environment variables.');
     }
@@ -28,7 +29,7 @@ async function getConnection() {
 }
 
 export async function getDocuments(options: QueryOptions): Promise<DocumentData[]> {
-    const connection = await getConnection();
+    const connection = await getConnection(options.connectionName);
     try {
         const { collectionName, filters, limit, offset, sortBy, fields } = options;
         const selectFields = fields.length > 0 ? fields.join(', ') : '*';
@@ -65,8 +66,8 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
     }
 }
 
-export async function addDocument(collectionName: string, data: DocumentData): Promise<string> {
-    const connection = await getConnection();
+export async function addDocument(collectionName: string, data: DocumentData, connectionName?: string): Promise<string> {
+    const connection = await getConnection(connectionName);
     try {
         const fields = Object.keys(data);
         const placeholders = fields.map(() => '?').join(', ');
@@ -80,8 +81,8 @@ export async function addDocument(collectionName: string, data: DocumentData): P
     }
 }
 
-export async function updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void> {
-    const connection = await getConnection();
+export async function updateDocument(collectionName: string, docId: string, data: DocumentData, connectionName?: string): Promise<void> {
+    const connection = await getConnection(connectionName);
     try {
         const fields = Object.keys(data);
         const setClauses = fields.map(field => `\`${field}\` = ?`).join(', ');
@@ -94,8 +95,8 @@ export async function updateDocument(collectionName: string, docId: string, data
     }
 }
 
-export async function deleteDocument(collectionName: string, docId: string): Promise<void> {
-    const connection = await getConnection();
+export async function deleteDocument(collectionName: string, docId: string, connectionName?: string): Promise<void> {
+    const connection = await getConnection(connectionName);
     try {
         const sql = `DELETE FROM \`${collectionName}\` WHERE id = ?`;
         await connection.execute(sql, [docId]);

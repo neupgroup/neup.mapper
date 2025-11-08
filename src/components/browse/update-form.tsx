@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Loader2, Pencil, Play, Wand2 } from 'lucide-react';
 import { Connection } from '@/lib/orm/query-builder';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { listConnections } from '@/app/actions';
 
 type Nouns = { container: string; item: string; itemPlural: string };
 
@@ -23,6 +25,18 @@ export function UpdateForm({ nouns }: { nouns?: Nouns }) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [connectionName, setConnectionName] = useState<string>('default');
+  const [availableConnections, setAvailableConnections] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const names = await listConnections();
+        setAvailableConnections(names);
+        if (names.includes('default')) setConnectionName('default');
+      } catch {}
+    })();
+  }, []);
 
   const handleGenerateCode = () => {
     if (!collectionName || !docId) {
@@ -36,7 +50,8 @@ export function UpdateForm({ nouns }: { nouns?: Nouns }) {
     try {
         // Validate JSON
         JSON.parse(updateContent);
-        const code = `new Connection().collection('${collectionName}').update('${docId}', ${updateContent});`;
+        const connCtor = connectionName && connectionName !== 'default' ? `new Connection('${connectionName}')` : 'new Connection()';
+        const code = `${connCtor}.collection('${collectionName}').update('${docId}', ${updateContent});`;
         setGeneratedCode(code);
     } catch(e) {
         toast({ variant: "destructive", title: "Invalid JSON format", description: "Please check the update JSON content." });
@@ -48,7 +63,9 @@ export function UpdateForm({ nouns }: { nouns?: Nouns }) {
     try {
         const docData = JSON.parse(updateContent);
         setLoading(true);
-        await new Connection().collection(collectionName).update(docId, docData);
+        await new Connection(connectionName && connectionName !== 'default' ? connectionName : undefined)
+          .collection(collectionName)
+          .update(docId, docData);
         toast({ title: `${cap(item)} Updated`, description: `The ${item} has been updated successfully.` });
         setGeneratedCode(null);
     } catch (e: any) {
@@ -68,6 +85,19 @@ export function UpdateForm({ nouns }: { nouns?: Nouns }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex flex-col space-y-2">
+          <label className="text-sm font-medium">Connection</label>
+          <Select value={connectionName} onValueChange={setConnectionName}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select connection" />
+            </SelectTrigger>
+            <SelectContent>
+              {['default', ...availableConnections.filter(n => n !== 'default')].map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col space-y-2">
                 <label htmlFor="update-collection-name" className="text-sm font-medium">{cap(container)} Name</label>

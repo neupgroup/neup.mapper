@@ -127,7 +127,7 @@ export default function BrowsePage() {
                 {[
                   { value: 'Firestore' as const, label: 'Firestore' },
                   { value: 'SQL' as const, label: 'SQL' },
-                  { value: 'MongoDB' as const, label: 'MongoDB (coming soon)', disabled: true },
+                  { value: 'MongoDB' as const, label: 'MongoDB' },
                 ].map(({ value, label, disabled }) => (
                   <Label key={value} htmlFor={`db-${value}`} className={`cursor-pointer ${disabled ? 'opacity-50' : ''}`}>
                     <div className={`flex flex-col items-center justify-center rounded-lg border-2 p-4 transition-colors ${disabled ? 'border-muted' : 'hover:bg-accent hover:text-accent-foreground'} ${dbType === value ? 'border-primary bg-primary/10' : 'border-muted'}`}>

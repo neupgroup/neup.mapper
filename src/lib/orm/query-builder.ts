@@ -1,12 +1,21 @@
 
 'use client';
 import { DocumentData } from 'firebase/firestore';
-import { getDocuments, addDocument, updateDocument, deleteDocument } from '@/app/actions';
+import {
+  getDocumentsWithConnection,
+  addDocumentWithConnection,
+  updateDocumentWithConnection,
+  deleteDocumentWithConnection,
+} from '@/app/actions';
 
 export class Connection {
-    collection(collectionName: string): QueryBuilder {
-        return new QueryBuilder(collectionName);
-    }
+  private name?: string;
+  constructor(name?: string) {
+    this.name = name;
+  }
+  collection(collectionName: string): QueryBuilder {
+    return new QueryBuilder(collectionName, this.name);
+  }
 }
 
 export class QueryBuilder {
@@ -15,9 +24,11 @@ export class QueryBuilder {
   private limitCount: number | null = null;
   private offsetCount: number | null = null;
   private sorting: any | null = null;
+  private connectionName?: string;
 
-  constructor(collectionName: string) {
+  constructor(collectionName: string, connectionName?: string) {
     this.collectionName = collectionName;
+    this.connectionName = connectionName;
   }
 
   where(field: string, operator: any, value: any) {
@@ -41,24 +52,28 @@ export class QueryBuilder {
   }
 
   async getDocuments(...fields: string[]): Promise<DocumentData[]> {
-    return getDocuments(this.collectionName, {
-      filters: this.filters,
-      limit: this.limitCount,
-      offset: this.offsetCount,
-      sortBy: this.sorting,
-      fields,
-    });
+    return getDocumentsWithConnection(
+      this.collectionName,
+      {
+        filters: this.filters,
+        limit: this.limitCount,
+        offset: this.offsetCount,
+        sortBy: this.sorting,
+        fields,
+      },
+      this.connectionName
+    );
   }
 
   async add(data: DocumentData) {
-    return addDocument(this.collectionName, data);
+    return addDocumentWithConnection(this.collectionName, data, this.connectionName);
   }
 
   async update(docId: string, data: DocumentData) {
-    return updateDocument(this.collectionName, docId, data);
+    return updateDocumentWithConnection(this.collectionName, docId, data, this.connectionName);
   }
 
   async delete(docId: string) {
-    return deleteDocument(this.collectionName, docId);
+    return deleteDocumentWithConnection(this.collectionName, docId, this.connectionName);
   }
 }

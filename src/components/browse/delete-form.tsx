@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { listConnections } from '@/app/actions';
 
 type Nouns = { container: string; item: string; itemPlural: string };
 
@@ -32,20 +34,35 @@ export function DeleteForm({ nouns }: { nouns?: Nouns }) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [connectionName, setConnectionName] = useState<string>('default');
+  const [availableConnections, setAvailableConnections] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const names = await listConnections();
+        setAvailableConnections(names);
+        if (names.includes('default')) setConnectionName('default');
+      } catch {}
+    })();
+  }, []);
 
   const handleGenerateCode = () => {
     if (!collectionName || !docId) {
         toast({ variant: "destructive", title: `${cap(container)} name and ${cap(item)} ID are required.` });
         return;
     }
-    const code = `new Connection().collection('${collectionName}').delete('${docId}');`;
+    const connCtor = connectionName && connectionName !== 'default' ? `new Connection('${connectionName}')` : 'new Connection()';
+    const code = `${connCtor}.collection('${collectionName}').delete('${docId}');`;
     setGeneratedCode(code);
   };
 
   const handleDeleteDocument = async () => {
     setLoading(true);
     try {
-        await new Connection().collection(collectionName).delete(docId);
+        await new Connection(connectionName && connectionName !== 'default' ? connectionName : undefined)
+          .collection(collectionName)
+          .delete(docId);
         toast({ title: `${cap(item)} Deleted`, description: `The ${item} has been deleted successfully.` });
         setDocId('');
         setGeneratedCode(null);
@@ -66,6 +83,21 @@ export function DeleteForm({ nouns }: { nouns?: Nouns }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col space-y-2">
+            <label className="text-sm font-medium">Connection</label>
+            <Select value={connectionName} onValueChange={setConnectionName}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select connection" />
+              </SelectTrigger>
+              <SelectContent>
+                {['default', ...availableConnections.filter(n => n !== 'default')].map((name) => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col space-y-2">
                 <label htmlFor="delete-collection-name" className="text-sm font-medium">{cap(container)} Name</label>

@@ -10,10 +10,11 @@ interface QueryOptions {
   offset: number | null;
   sortBy: { field: string; direction: 'asc' | 'desc' } | null;
   fields: string[];
+  connectionName?: string;
 }
 
-function getHeaders(): Record<string, string> {
-  const apiConfig = getDbConfig();
+function getHeaders(connectionName?: string): Record<string, string> {
+  const apiConfig = getDbConfig(connectionName ?? 'default');
   if (!apiConfig || apiConfig.dbType !== 'API') {
     throw new Error('API is not configured.');
   }
@@ -38,7 +39,7 @@ function getHeaders(): Record<string, string> {
 
 export async function getDocuments(options: QueryOptions): Promise<DocumentData[]> {
   const { collectionName, filters, limit: limitCount, offset: offsetCount, sortBy, fields } = options;
-  const apiConfig = getDbConfig();
+  const apiConfig = getDbConfig(options.connectionName ?? 'default');
 
   if (!apiConfig || apiConfig.dbType !== 'API') {
     throw new Error('API is not configured.');
@@ -47,7 +48,7 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   const { basePath } = apiConfig;
   const getEndpoint = `/${collectionName}`;
 
-  const headers = getHeaders();
+  const headers = getHeaders(options.connectionName);
   const url = new URL(`${basePath}${getEndpoint}`);
 
   filters.forEach(f => url.searchParams.append(f.field, f.value));
@@ -88,8 +89,8 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   return Array.isArray(data) ? data : [data];
 }
 
-export async function addDocument(collectionName: string, data: DocumentData): Promise<string> {
-    const apiConfig = getDbConfig();
+export async function addDocument(collectionName: string, data: DocumentData, connectionName?: string): Promise<string> {
+    const apiConfig = getDbConfig(connectionName ?? 'default');
     
     if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured.');
@@ -97,7 +98,7 @@ export async function addDocument(collectionName: string, data: DocumentData): P
     
     const { basePath } = apiConfig;
     const createEndpoint = `/${collectionName}`;
-    const headers = getHeaders();
+    const headers = getHeaders(connectionName);
     
     const response = await fetch(`${basePath}${createEndpoint}`, {
        method: 'POST',
@@ -112,16 +113,16 @@ export async function addDocument(collectionName: string, data: DocumentData): P
     return result.id;
 }
 
-export async function updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void> {
-    const apiConfig = getDbConfig();
+export async function updateDocument(collectionName: string, docId: string, data: DocumentData, connectionName?: string): Promise<void> {
+    const apiConfig = getDbConfig(connectionName ?? 'default');
     
-    if (!apiagileConfig || apiConfig.dbType !== 'API') {
+    if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured.');
     }
     
     const { basePath } = apiConfig;
     const updateEndpoint = `/${collectionName}/{id}`;
-    const headers = getHeaders();
+    const headers = getHeaders(connectionName);
     
     const url = `${basePath}${updateEndpoint.replace('{id}', docId)}`;
     
@@ -136,8 +137,8 @@ export async function updateDocument(collectionName: string, docId: string, data
     }
 }
 
-export async function deleteDocument(collectionName: string, docId: string): Promise<void> {
-    const apiConfig = getDbConfig();
+export async function deleteDocument(collectionName: string, docId: string, connectionName?: string): Promise<void> {
+    const apiConfig = getDbConfig(connectionName ?? 'default');
 
     if (!apiConfig || apiConfig.dbType !== 'API') {
         throw new Error('API is not configured.');
@@ -145,7 +146,7 @@ export async function deleteDocument(collectionName: string, docId: string): Pro
     
     const { basePath } = apiConfig;
     const deleteEndpoint = `/${collectionName}/{id}`;
-    const headers = getHeaders();
+    const headers = getHeaders(connectionName);
     
     const url = `${basePath}${deleteEndpoint.replace('{id}', docId)}`;
     

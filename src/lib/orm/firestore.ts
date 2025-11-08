@@ -25,10 +25,11 @@ interface QueryOptions {
   offset: number | null;
   sortBy: { field: string; direction: 'asc' | 'desc' } | null;
   fields: string[];
+  connectionName?: string;
 }
 
-function getDb(): Firestore {
-  const db = getFirestoreInstance();
+function getDb(connectionName?: string): Firestore {
+  const db = getFirestoreInstance(connectionName ?? 'default');
   if (!db) {
     throw new Error('Firestore is not initialized. Check your .env file for Firestore credentials.');
   }
@@ -36,7 +37,7 @@ function getDb(): Firestore {
 }
 
 export async function getDocuments(options: QueryOptions): Promise<DocumentData[]> {
-  const db = getDb();
+  const db = getDb(options.connectionName);
   const { collectionName, filters, limit: limitCount, offset: offsetCount, sortBy, fields } = options;
 
   let q = query(collection(db, collectionName));
@@ -80,19 +81,19 @@ export async function getDocuments(options: QueryOptions): Promise<DocumentData[
   });
 }
 
-export async function addDocument(collectionName: string, data: DocumentData): Promise<string> {
-  const db = getDb();
+export async function addDocument(collectionName: string, data: DocumentData, connectionName?: string): Promise<string> {
+  const db = getDb(connectionName);
   const docRef = await addDoc(collection(db, collectionName), data);
   return docRef.id;
 }
 
-export async function updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void> {
-  const db = getDb();
+export async function updateDocument(collectionName: string, docId: string, data: DocumentData, connectionName?: string): Promise<void> {
+  const db = getDb(connectionName);
   const docRef = doc(db, collectionName, docId);
   await updateDoc(docRef, data);
 }
 
-export async function deleteDocument(collectionName: string, docId: string): Promise<void> {
-  const db = getDb();
+export async function deleteDocument(collectionName: string, docId: string, connectionName?: string): Promise<void> {
+  const db = getDb(connectionName);
   await deleteDoc(doc(db, collectionName, docId));
 }
