@@ -2,6 +2,15 @@ import type { DbAdapter, QueryOptions } from './types';
 
 export function createOrm(adapter: DbAdapter) {
   return {
+    async get(options: QueryOptions) {
+      if (adapter.get) return adapter.get(options);
+      return adapter.getDocuments(options);
+    },
+    async getOne(options: QueryOptions) {
+      if (adapter.getOne) return adapter.getOne(options);
+      const arr = adapter.get ? await adapter.get(options) : await adapter.getDocuments(options);
+      return (arr as any[])[0] ?? null;
+    },
     async getDocuments(options: QueryOptions) {
       return adapter.getDocuments(options);
     },

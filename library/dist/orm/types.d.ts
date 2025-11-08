@@ -16,6 +16,8 @@ export interface QueryOptions {
     rawWhere?: string | null;
 }
 export interface DbAdapter {
+    get?(options: QueryOptions): Promise<DocumentData[]>;
+    getOne?(options: QueryOptions): Promise<DocumentData | null>;
     getDocuments(options: QueryOptions): Promise<DocumentData[]>;
     addDocument(collectionName: string, data: DocumentData): Promise<string>;
     updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void>;

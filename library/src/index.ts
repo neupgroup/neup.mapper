@@ -172,15 +172,8 @@ class SchemaQuery {
     return this;
   }
 
-  to(update: Record<string, any>) {
-    this.pendingUpdate = update;
-    return this;
-  }
-
-  async get(): Promise<Record<string, any>[]> {
-    const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
-    const options: QueryOptions = {
+  private buildOptions(): QueryOptions {
+    return {
       collectionName: this.def.collectionName,
       filters: this.filters.map(f => ({ field: f.field, operator: f.operator, value: f.value })),
       limit: null,
@@ -189,13 +182,31 @@ class SchemaQuery {
       fields: this.def.fields.map(f => f.name),
       rawWhere: this.rawWhere,
     } as any;
-    const docs = await adapter.getDocuments(options);
+  }
+
+  to(update: Record<string, any>) {
+    this.pendingUpdate = update;
+    return this;
+  }
+
+  async get(): Promise<Record<string, any>[]> {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    const options = this.buildOptions();
+    const docs = adapter.get ? await adapter.get(options) : await adapter.getDocuments(options);
     return docs as any;
   }
 
   async getOne(): Promise<Record<string, any> | null> {
-    const results = await this.get();
-    return results[0] || null;
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    const options = this.buildOptions();
+    if (adapter.getOne) {
+      const one = await adapter.getOne(options);
+      return (one as any) ?? null;
+    }
+    const results = adapter.get ? await adapter.get(options) : await adapter.getDocuments(options);
+    return (results as any[])[0] || null;
   }
 
   async add(data: Record<string, any>) {
