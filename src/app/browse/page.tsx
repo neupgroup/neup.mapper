@@ -36,15 +36,15 @@ export default function BrowsePage() {
     if (!operation) return null;
     switch (operation) {
       case 'get':
-        return <GetForm nouns={nouns} />;
+        return <GetForm nouns={nouns} dbType={interfaceType === 'database' ? dbType : null} />;
       case 'create':
       case 'post':
-        return <CreateForm nouns={nouns} />;
+        return <CreateForm nouns={nouns} dbType={interfaceType === 'database' ? dbType : null} />;
       case 'update':
       case 'patch':
-        return <UpdateForm nouns={nouns} />;
+        return <UpdateForm nouns={nouns} dbType={interfaceType === 'database' ? dbType : null} />;
       case 'delete':
-        return <DeleteForm nouns={nouns} />;
+        return <DeleteForm nouns={nouns} dbType={interfaceType === 'database' ? dbType : null} />;
       default:
         return null;
     }

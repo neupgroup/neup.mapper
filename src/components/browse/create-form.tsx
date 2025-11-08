@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { listConnections } from '@/app/actions';
+import { listConnections, getRuntimeDbConfig } from '@/app/actions';
 
 type Schema = {
   collectionName: string;
@@ -25,8 +25,9 @@ type Schema = {
 };
 
 type Nouns = { container: string; item: string; itemPlural: string };
+type DbType = 'Firestore' | 'SQL' | 'MongoDB' | 'API';
 
-export function CreateForm({ nouns }: { nouns?: Nouns }) {
+export function CreateForm({ nouns, dbType }: { nouns?: Nouns; dbType?: DbType | null }) {
   const container = nouns?.container ?? 'collection';
   const item = nouns?.item ?? 'document';
   const itemPlural = nouns?.itemPlural ?? 'documents';
@@ -62,11 +63,22 @@ export function CreateForm({ nouns }: { nouns?: Nouns }) {
     (async () => {
       try {
         const names = await listConnections();
-        setAvailableConnections(names);
-        if (names.includes('default')) setConnectionName('default');
+        if (dbType) {
+          const filtered: string[] = [];
+          for (const name of names) {
+            const cfg = await getRuntimeDbConfig(name);
+            if (cfg?.dbType === dbType) filtered.push(name);
+          }
+          setAvailableConnections(filtered);
+          if (filtered.includes('default')) setConnectionName('default');
+          else if (filtered.length > 0) setConnectionName(filtered[0]);
+        } else {
+          setAvailableConnections(names);
+          if (names.includes('default')) setConnectionName('default');
+        }
       } catch {}
     })();
-  }, []);
+  }, [dbType]);
 
   useEffect(() => {
     const schema = schemas[collectionName];

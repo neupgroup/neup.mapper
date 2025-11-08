@@ -10,11 +10,12 @@ import { Connection } from '@/lib/orm/query-builder';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { listConnections } from '@/app/actions';
+import { listConnections, getRuntimeDbConfig } from '@/app/actions';
 
 type Nouns = { container: string; item: string; itemPlural: string };
+type DbType = 'Firestore' | 'SQL' | 'MongoDB' | 'API';
 
-export function UpdateForm({ nouns }: { nouns?: Nouns }) {
+export function UpdateForm({ nouns, dbType }: { nouns?: Nouns; dbType?: DbType | null }) {
   const container = nouns?.container ?? 'collection';
   const item = nouns?.item ?? 'document';
   const itemPlural = nouns?.itemPlural ?? 'documents';
@@ -32,11 +33,22 @@ export function UpdateForm({ nouns }: { nouns?: Nouns }) {
     (async () => {
       try {
         const names = await listConnections();
-        setAvailableConnections(names);
-        if (names.includes('default')) setConnectionName('default');
+        if (dbType) {
+          const filtered: string[] = [];
+          for (const name of names) {
+            const cfg = await getRuntimeDbConfig(name);
+            if (cfg?.dbType === dbType) filtered.push(name);
+          }
+          setAvailableConnections(filtered);
+          if (filtered.includes('default')) setConnectionName('default');
+          else if (filtered.length > 0) setConnectionName(filtered[0]);
+        } else {
+          setAvailableConnections(names);
+          if (names.includes('default')) setConnectionName('default');
+        }
       } catch {}
     })();
-  }, []);
+  }, [dbType]);
 
   const handleGenerateCode = () => {
     if (!collectionName || !docId) {
