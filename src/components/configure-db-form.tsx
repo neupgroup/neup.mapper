@@ -96,6 +96,7 @@ export function ConfigureDBForm() {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [showAddFlow, setShowAddFlow] = useState(false);
   const [addFlowDbType, setAddFlowDbType] = useState<DatabaseType | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -134,7 +135,7 @@ export function ConfigureDBForm() {
   const toEnvBlock = (name: string, cfg: any) => {
     const suffix = name === "default" ? "" : `__${name.toUpperCase()}`;
     let content = `# Connection: ${name}\n`;
-    content += `DB_TYPE${suffix}=${cfg.dbType}\n`;
+    content += `CONNECTION_TYPE${suffix}=${cfg.dbType}\n`;
     switch (cfg.dbType) {
       case "Firestore":
         content += `FIRESTORE_API_KEY${suffix}=${cfg.apiKey}\n`;
@@ -274,6 +275,41 @@ export function ConfigureDBForm() {
     }
   };
 
+  const testConnection = async () => {
+    try {
+      setTesting(true);
+      const values = form.getValues();
+      const base: any = { dbType: values.dbType };
+      let config: any = base;
+      switch (values.dbType) {
+        case "Firestore":
+          config = { ...base, apiKey: (values as any).apiKey, authDomain: (values as any).authDomain, projectId: (values as any).projectId, storageBucket: (values as any).storageBucket, messagingSenderId: (values as any).messagingSenderId, appId: (values as any).appId };
+          break;
+        case "MongoDB":
+          config = { ...base, connectionString: (values as any).connectionString };
+          break;
+        case "SQL":
+          config = { ...base, host: (values as any).host, port: (values as any).port, user: (values as any).user, password: (values as any).password, database: (values as any).database };
+          break;
+        case "API":
+          config = { ...base, basePath: (values as any).basePath, apiKey: (values as any).apiKey, headers: (values as any).headers };
+          break;
+      }
+      const { testRuntimeDbConnection } = await import("@/app/actions");
+      const result = await testRuntimeDbConnection(config);
+      if (result.ok) {
+        toast({ title: "Connection OK", description: result.message });
+      } else {
+        toast({ variant: "destructive", title: "Connection Failed", description: result.message });
+      }
+    } catch (e: any) {
+      const msg = typeof e?.message === "string" ? e.message : "Connection test failed.";
+      toast({ variant: "destructive", title: "Error", description: msg });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const startEditConnection = async (name: string) => {
     try {
       const { getRuntimeDbConfig } = await import("@/app/actions");
@@ -285,7 +321,7 @@ export function ConfigureDBForm() {
       setIsEditing(true);
       setEditingName(name);
       setDbType(cfg.dbType as DatabaseType);
-      const baseValues: any = { dbType: cfg.dbType, connectionName: name };
+      const baseValues: any = { ...(baseDefaultValues as any), dbType: cfg.dbType, connectionName: name };
       switch (cfg.dbType) {
         case "Firestore":
           Object.assign(baseValues, { apiKey: cfg.apiKey ?? "", authDomain: cfg.authDomain ?? "", projectId: cfg.projectId ?? "", storageBucket: cfg.storageBucket ?? "", messagingSenderId: cfg.messagingSenderId ?? "", appId: cfg.appId ?? "" });
@@ -294,7 +330,7 @@ export function ConfigureDBForm() {
           Object.assign(baseValues, { connectionString: cfg.connectionString ?? "" });
           break;
         case "SQL":
-          Object.assign(baseValues, { host: cfg.host ?? "", port: cfg.port ?? ("" as any), user: cfg.user ?? "", password: cfg.password ?? "", database: cfg.database ?? "" });
+          Object.assign(baseValues, { host: cfg.host ?? "", port: (cfg.port ?? "") as any, user: cfg.user ?? "", password: cfg.password ?? "", database: cfg.database ?? "" });
           break;
         case "API":
           Object.assign(baseValues, { basePath: cfg.basePath ?? "", apiKey: (cfg as any).apiKey ?? "", headers: (cfg.headers ?? []).map((h: any) => ({ key: h.key, value: h.value })) });
@@ -302,10 +338,6 @@ export function ConfigureDBForm() {
       }
       // @ts-ignore
       form.reset(baseValues);
-      if (cfg.dbType === "API") {
-        // @ts-ignore
-        form.setValue("headers", (cfg.headers ?? []).map((h: any) => ({ key: h.key, value: h.value })));
-      }
       toast({ title: "Editing Connection", description: `Loaded '${name}' into the form.` });
     } catch (e) {
       console.error("Failed to start edit:", e);
@@ -639,6 +671,9 @@ export function ConfigureDBForm() {
                 {renderFormFields()}
 
                 <div className="flex flex-wrap gap-4">
+                  <Button type="button" variant="outline" onClick={testConnection} className="w-full sm:w-auto" disabled={testing}>
+                    <span>Test Connection</span>
+                  </Button>
                   <Button type="button" variant="outline" onClick={applyRuntimeConfig} className="w-full sm:w-auto">
                     <Database />
                     <span>{isEditing ? "Save Changes" : "Apply Runtime Config"}</span>

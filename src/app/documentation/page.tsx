@@ -36,7 +36,7 @@ export default function DocumentationPage() {
                 <li>Download the generated <code>.env</code> and place it at your project root.</li>
               </ul>
               <p className="text-muted-foreground">
-                Tip: Non-default connections in the generated <code>.env</code> use a suffix format like <code>__ANALYTICS</code>. For example, <code>DB_TYPE__ANALYTICS=Firestore</code>.
+                Tip: Non-default connections in the generated <code>.env</code> use a suffix format like <code>__ANALYTICS</code>. For example, <code>CONNECTION_TYPE__ANALYTICS=Firestore</code>.
               </p>
             </CardContent>
           </Card>

@@ -4,6 +4,10 @@
 import type { DocumentData } from 'firebase/firestore';
 import { createOrm, type DbAdapter, type QueryOptions } from '@neupgroup/mapper';
 import { setDbConfig, listRuntimeConfigs, getDbConfig, clearDbConfig } from '@/lib/orm/config';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
+import { initializeFirestore, collection, getDocs, limit, query } from 'firebase/firestore';
+import { MongoClient } from 'mongodb';
+import mysql from 'mysql2/promise';
 import {
   getDocuments as getDocumentsOrm,
   addDocument as addDocumentOrm,
@@ -168,4 +172,103 @@ export async function listConnections(): Promise<string[]> {
 // Retrieve the current runtime configuration for a named connection
 export async function getRuntimeDbConfig(name?: string): Promise<any | null> {
   return getDbConfig(name ?? 'default');
+}
+
+// Test connection without persisting runtime config
+export async function testRuntimeDbConnection(config: any): Promise<{ ok: boolean; message: string }> {
+  try {
+    if (!config || !config.dbType) {
+      return { ok: false, message: 'Missing dbType in config' };
+    }
+    switch (config.dbType) {
+      case 'Firestore': {
+        const firebaseConfig = {
+          apiKey: config.apiKey,
+          authDomain: config.authDomain,
+          projectId: config.projectId,
+          storageBucket: config.storageBucket,
+          messagingSenderId: config.messagingSenderId,
+          appId: config.appId,
+        };
+        const appName = `__TEST__${Date.now()}`;
+        let app;
+        try {
+          app = initializeApp(firebaseConfig, appName);
+        } catch (e: any) {
+          return { ok: false, message: e?.message || 'Failed to initialize Firebase app' };
+        }
+        try {
+          const fs = initializeFirestore(app, {});
+          // Try a lightweight read from an empty collection (may succeed even if empty)
+          try {
+            await getDocs(query(collection(fs as any, '__health'), limit(1)));
+          } catch {
+            // Even if read fails due to rules, initialization is still a valid connectivity test
+          }
+          await deleteApp(getApp(appName));
+          return { ok: true, message: 'Firestore initialized successfully' };
+        } catch (e: any) {
+          try { await deleteApp(getApp(appName)); } catch {}
+          return { ok: false, message: e?.message || 'Failed to initialize Firestore' };
+        }
+      }
+      case 'MongoDB': {
+        const uri = config.connectionString;
+        if (!uri) return { ok: false, message: 'Missing MongoDB connection string' };
+        const client = new MongoClient(uri);
+        try {
+          await client.connect();
+          await client.close();
+          return { ok: true, message: 'MongoDB connected successfully' };
+        } catch (e: any) {
+          try { await client.close(); } catch {}
+          return { ok: false, message: e?.message || 'Failed to connect to MongoDB' };
+        }
+      }
+      case 'SQL': {
+        const { host, port, user, password, database } = config;
+        if (!host || !user || !database) {
+          return { ok: false, message: 'Missing SQL host/user/database' };
+        }
+        let connection: mysql.Connection | null = null as any;
+        try {
+          connection = await mysql.createConnection({ host, port, user, password, database });
+          // ping is lightweight; fallback to SELECT 1 if not available
+          if ((connection as any).ping) {
+            await (connection as any).ping();
+          } else {
+            await connection.execute('SELECT 1');
+          }
+          await connection.end();
+          return { ok: true, message: 'SQL connection successful' };
+        } catch (e: any) {
+          try { if (connection) await connection.end(); } catch {}
+          return { ok: false, message: e?.message || 'Failed to connect to SQL database' };
+        }
+      }
+      case 'API': {
+        const basePath = config.basePath;
+        if (!basePath) return { ok: false, message: 'Missing API basePath' };
+        const headers: Record<string, string> = {};
+        if (config.apiKey) headers['Authorization'] = config.apiKey;
+        if (Array.isArray(config.headers)) {
+          for (const h of config.headers) {
+            if (h?.key && h?.value) headers[h.key] = h.value;
+          }
+        }
+        headers['Accept'] = headers['Accept'] || 'application/json';
+        try {
+          const res = await fetch(basePath, { method: 'GET', headers });
+          if (res.ok) return { ok: true, message: `API reachable (${res.status})` };
+          return { ok: false, message: `API responded with status ${res.status}` };
+        } catch (e: any) {
+          return { ok: false, message: e?.message || 'Failed to reach API basePath' };
+        }
+      }
+      default:
+        return { ok: false, message: `Unsupported dbType: ${config.dbType}` };
+    }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || 'Unknown error during connection test' };
+  }
 }

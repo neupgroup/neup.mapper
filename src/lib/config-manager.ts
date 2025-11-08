@@ -62,9 +62,9 @@ export function getDbConfig(name: string = 'default'): DbConfig | null {
   const runtimeConfig = runtimeConfigs.get(name);
   if (runtimeConfig) return runtimeConfig;
 
-  const type = process.env.DB_TYPE as SupportedDbType | undefined;
+  const type = process.env.CONNECTION_TYPE as SupportedDbType | undefined;
   if (!type) {
-    console.warn('DB_TYPE environment variable is not set.');
+    console.warn('CONNECTION_TYPE environment variable is not set.');
     return null;
   }
 
@@ -113,7 +113,7 @@ export function getDbConfig(name: string = 'default'): DbConfig | null {
       };
       break;
     default:
-      console.warn(`Unsupported DB_TYPE: ${type}`);
+      console.warn(`Unsupported CONNECTION_TYPE: ${type}`);
       return null;
   }
   return config as DbConfig;
