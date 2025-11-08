@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/card";
 import { Download, Database, FileJson, Flame, Link, PlusCircle, Trash2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { logError } from "@/app/errors/logger";
 
 const databaseOptions = [
   { value: "MongoDB", label: "MongoDB", icon: FileJson },
@@ -86,6 +87,30 @@ const formSchema = z.discriminatedUnion("dbType", [
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Shared default values used when resetting or populating the form across types
+const baseDefaultValues: any = {
+  dbType: "Firestore",
+  connectionName: "default",
+  // Firestore
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+  // MongoDB
+  connectionString: "",
+  // SQL
+  host: "",
+  port: 0,
+  user: "",
+  password: "",
+  database: "",
+  // API
+  basePath: "",
+  headers: [],
+};
+
 export function ConfigureDBForm() {
   const [dbType, setDbType] = useState<DatabaseType>("Firestore");
   const { toast } = useToast();
@@ -125,10 +150,14 @@ export function ConfigureDBForm() {
           try {
             const cfg = await getRuntimeDbConfig(n);
             if (cfg?.dbType) types[n] = cfg.dbType as DatabaseType;
-          } catch {}
+          } catch (e) {
+            logError(e, "configure: load connections -> getRuntimeDbConfig");
+          }
         }
         setConnectionDbTypes(types);
-      } catch {}
+      } catch (e) {
+        logError(e, "configure: load connections");
+      }
     })();
   }, []);
 
@@ -188,6 +217,7 @@ export function ConfigureDBForm() {
       toast({ title: "Collective .env generated", description: ".env content generated for all connections." });
     } catch (error) {
       console.error("Error generating collective .env:", error);
+      logError(error, "configure: generateEnvForAllConnections");
       toast({ variant: "destructive", title: "Failed to generate .env", description: "Please try again." });
     }
   };
@@ -216,6 +246,7 @@ export function ConfigureDBForm() {
       toast({ title: "Downloaded .env", description: "Env file downloaded for current connections." });
     } catch (error) {
       console.error("Error downloading .env:", error);
+      logError(error, "configure: downloadCollectiveEnv");
       toast({ variant: "destructive", title: "Failed to download .env" });
     }
   };
@@ -270,6 +301,7 @@ export function ConfigureDBForm() {
       } catch {}
     } catch (e: any) {
       console.error(e);
+      logError(e, "configure: applyRuntimeConfig");
       const msg = typeof e?.message === "string" ? e.message : "Please check your inputs and try again.";
       toast({ variant: "destructive", title: "Failed to apply config", description: msg });
     }
@@ -303,6 +335,7 @@ export function ConfigureDBForm() {
         toast({ variant: "destructive", title: "Connection Failed", description: result.message });
       }
     } catch (e: any) {
+      logError(e, "configure: testConnection");
       const msg = typeof e?.message === "string" ? e.message : "Connection test failed.";
       toast({ variant: "destructive", title: "Error", description: msg });
     } finally {
@@ -341,6 +374,7 @@ export function ConfigureDBForm() {
       toast({ title: "Editing Connection", description: `Loaded '${name}' into the form.` });
     } catch (e) {
       console.error("Failed to start edit:", e);
+      logError(e, "configure: startEditConnection");
       toast({ variant: "destructive", title: "Edit failed", description: "Could not load the selected connection." });
     }
   };
@@ -357,7 +391,9 @@ export function ConfigureDBForm() {
         try {
           const cfg = await (await import("@/app/actions")).getRuntimeDbConfig(n);
           if (cfg?.dbType) types[n] = cfg.dbType as DatabaseType;
-        } catch {}
+        } catch (e) {
+          logError(e, "configure: deleteConnection -> getRuntimeDbConfig");
+        }
       }
       setConnectionDbTypes(types);
       if (editingName === name) {
@@ -366,6 +402,7 @@ export function ConfigureDBForm() {
       toast({ title: "Connection Deleted", description: `"${name}" was removed.` });
     } catch (e: any) {
       console.error("Delete connection failed:", e);
+      logError(e, "configure: deleteConnection");
       const msg = typeof e?.message === "string" ? e.message : "Could not delete the connection.";
       toast({ variant: "destructive", title: "Delete failed", description: msg });
     }

@@ -580,28 +580,55 @@ export function BrowserFlow() {
               <Button onClick={handleGenerateCode} variant="secondary">
                 <Wand2 className="mr-2 h-4 w-4" /> Generate Code
               </Button>
-              {/* Hide Run when connection::undefined or schema::undefined */}
-              {generatedCode && !(selectedConnection === 'undefined' || selectedSchema === 'undefined') && (
-                <Button onClick={handleRun} disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                  Run Code
-                </Button>
-              )}
             </div>
 
             {generatedCode && (
               <pre className="mt-3 rounded-md border bg-muted p-3 text-xs"><code>{generatedCode}</code></pre>
             )}
 
-            {/* Step 6: Results or Errors */}
-            {error && <div className="text-sm text-destructive">{error}</div>}
-            {results.length > 0 && (
-              <div className="space-y-2">
-                {results.map((r, idx) => (
-                  <pre key={idx} className="rounded-md border bg-muted p-3 text-xs overflow-auto"><code>{JSON.stringify(r, null, 2)}</code></pre>
-                ))}
+            {/* Show Run Code button below the generated code */}
+            {generatedCode && !(selectedConnection === 'undefined' || selectedSchema === 'undefined') && (
+              <div className="mt-3">
+                <Button onClick={handleRun} disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                  Run Code
+                </Button>
               </div>
             )}
+
+            {/* Results Section */}
+            <div className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Results</CardTitle>
+                  <CardDescription>
+                    {isApiSelected
+                      ? (selectedApiBasePath ? `Responses from API: ${selectedApiBasePath}` : 'Responses from API requests.')
+                      : (effectiveCollection ? `Documents from '${effectiveCollection}'.` : 'Your query results will appear here.')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading && results.length === 0 && !error ? (
+                    <div className="flex justify-center items-center h-24">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : error ? (
+                    <div className="text-destructive-foreground bg-destructive/90 p-3 rounded-md text-sm">
+                      <p className="font-semibold">Error</p>
+                      <p>{error}</p>
+                    </div>
+                  ) : results.length > 0 ? (
+                    <div className="space-y-2">
+                      {results.map((r, idx) => (
+                        <pre key={idx} className="rounded-md border bg-muted p-3 text-xs overflow-auto"><code>{JSON.stringify(r, null, 2)}</code></pre>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No results yet. Generate and run code to see output here.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </CardContent>
         </Card>
       )}
