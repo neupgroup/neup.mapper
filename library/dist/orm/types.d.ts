@@ -13,6 +13,7 @@ export interface QueryOptions {
         direction: 'asc' | 'desc';
     } | null;
     fields: string[];
+    rawWhere?: string | null;
 }
 export interface DbAdapter {
     getDocuments(options: QueryOptions): Promise<DocumentData[]>;

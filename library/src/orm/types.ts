@@ -7,6 +7,7 @@ export interface QueryOptions {
   offset: number | null;
   sortBy: { field: string; direction: 'asc' | 'desc' } | null;
   fields: string[];
+  rawWhere?: string | null;
 }
 
 export interface DbAdapter {

@@ -1,27 +1,283 @@
-export type ColumnType = 'string' | 'number' | 'boolean' | 'date';
+import type { DbAdapter, QueryOptions } from './orm';
+
+export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
+
+export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api';
 
 export interface Field {
   name: string;
   type: ColumnType;
+  editable?: boolean;
+  autoIncrement?: boolean;
   nullable?: boolean;
   defaultValue?: unknown;
 }
 
-export interface Schema {
+export interface SchemaDef {
   name: string;
+  connectionName: string;
+  collectionName: string;
   fields: Field[];
+  allowUndefinedFields?: boolean;
 }
 
-export class Mapper {
-  private schemas = new Map<string, Schema>();
+class AdapterRegistry {
+  private adaptersByConnection = new Map<string, DbAdapter>();
 
-  register(schema: Schema) {
-    this.schemas.set(schema.name, schema);
+  attach(connectionName: string, adapter: DbAdapter) {
+    this.adaptersByConnection.set(connectionName, adapter);
+  }
+
+  get(connectionName: string) {
+    return this.adaptersByConnection.get(connectionName);
+  }
+}
+
+interface ConnectionConfig {
+  name: string;
+  type: ConnectionType;
+  key: Record<string, any>;
+}
+
+class ConnectionBuilder {
+  constructor(private manager: Connections, private name: string, private type: ConnectionType) {}
+
+  key(config: Record<string, any>) {
+    this.manager.register({ name: this.name, type: this.type, key: config });
+    return this.manager;
+  }
+}
+
+export class Connections {
+  private connections = new Map<string, ConnectionConfig>();
+  private adapters = new AdapterRegistry();
+
+  create(name: string, type: ConnectionType) {
+    if (this.connections.has(name)) {
+      throw new Error(`Connection with name '${name}' already exists`);
+    }
+    return new ConnectionBuilder(this, name, type);
+  }
+
+  register(config: ConnectionConfig) {
+    if (this.connections.has(config.name)) {
+      throw new Error(`Connection with name '${config.name}' already exists`);
+    }
+    this.connections.set(config.name, config);
+    return this;
+  }
+
+  attachAdapter(name: string, adapter: DbAdapter) {
+    if (!this.connections.has(name)) {
+      throw new Error(`Cannot attach adapter: unknown connection '${name}'`);
+    }
+    this.adapters.attach(name, adapter);
     return this;
   }
 
   get(name: string) {
-    return this.schemas.get(name);
+    return this.connections.get(name);
+  }
+
+  getAdapter(name: string) {
+    return this.adapters.get(name);
+  }
+
+  list() {
+    return Array.from(this.connections.values());
+  }
+}
+
+function parseDescriptorStructure(struct: Record<string, string>): { fields: Field[]; allowUndefinedFields: boolean } {
+  let allowUndefinedFields = false;
+  const fields: Field[] = [];
+  for (const [key, descriptor] of Object.entries(struct)) {
+    if (key === '?field') {
+      // Presence of '?field' enables accepting fields not defined in the schema
+      allowUndefinedFields = true;
+      continue;
+    }
+    const tokens = descriptor.split(/\s+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+    const field: Field = {
+      name: key,
+      type: (tokens.find(t => ['string', 'number', 'boolean', 'date', 'int'].includes(t)) as ColumnType) || 'string',
+      editable: tokens.includes('editable'),
+      autoIncrement: tokens.includes('auto_increment') || tokens.includes('autoincrement'),
+    };
+    fields.push(field);
+  }
+  return { fields, allowUndefinedFields };
+}
+
+class SchemaBuilder {
+  private connectionName?: string;
+  private collectionName?: string;
+  private fields: Field[] = [];
+  private allowUndefinedFields = false;
+
+  constructor(private manager: SchemaManager, private name: string) {}
+
+  use(options: { connection: string; collection: string }) {
+    this.connectionName = options.connection;
+    this.collectionName = options.collection;
+    return this;
+  }
+
+  setStructure(structure: Record<string, string> | Field[]) {
+    if (Array.isArray(structure)) {
+      this.fields = structure;
+      this.allowUndefinedFields = false;
+    } else {
+      const parsed = parseDescriptorStructure(structure);
+      this.fields = parsed.fields;
+      this.allowUndefinedFields = parsed.allowUndefinedFields;
+    }
+    // Finalize schema registration
+    if (!this.connectionName || !this.collectionName) {
+      throw new Error('Schema.use({ connection, collection }) must be set before setStructure');
+    }
+    this.manager.register({
+      name: this.name,
+      connectionName: this.connectionName,
+      collectionName: this.collectionName,
+      fields: this.fields,
+      allowUndefinedFields: this.allowUndefinedFields,
+    });
+    return this.manager;
+  }
+}
+
+class SchemaQuery {
+  private filters: { field: string; operator: string; value: any }[] = [];
+  private rawWhere: string | null = null;
+  private pendingUpdate: Record<string, any> | null = null;
+
+  constructor(private manager: SchemaManager, private def: SchemaDef) {}
+
+  // where('field','value', operator?) or where([field, value])
+  where(fieldOrPair: string | [string, any], value?: any, operator?: string) {
+    if (Array.isArray(fieldOrPair)) {
+      const [field, v] = fieldOrPair;
+      this.filters.push({ field, operator: '=', value: v });
+    } else {
+      const field = fieldOrPair;
+      this.filters.push({ field, operator: operator ?? '=', value });
+    }
+    return this;
+  }
+
+  // Accept a raw complex where clause string
+  whereComplex(raw: string) {
+    this.rawWhere = raw;
+    return this;
+  }
+
+  to(update: Record<string, any>) {
+    this.pendingUpdate = update;
+    return this;
+  }
+
+  async get(): Promise<Record<string, any>[]> {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    const options: QueryOptions = {
+      collectionName: this.def.collectionName,
+      filters: this.filters.map(f => ({ field: f.field, operator: f.operator, value: f.value })),
+      limit: null,
+      offset: null,
+      sortBy: null,
+      fields: this.def.fields.map(f => f.name),
+      rawWhere: this.rawWhere,
+    } as any;
+    const docs = await adapter.getDocuments(options);
+    return docs as any;
+  }
+
+  async getOne(): Promise<Record<string, any> | null> {
+    const results = await this.get();
+    return results[0] || null;
+  }
+
+  async add(data: Record<string, any>) {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!this.def.allowUndefinedFields) {
+      const allowed = new Set(this.def.fields.map(f => f.name));
+      data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+    }
+    return adapter.addDocument(this.def.collectionName, data as any);
+  }
+
+  async delete() {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    const docs = await this.get();
+    // Expect each doc has an 'id' field
+    for (const d of docs) {
+      const id = (d as any).id;
+      if (!id) throw new Error('Document missing id; cannot delete');
+      await adapter.deleteDocument(this.def.collectionName, id);
+    }
+  }
+
+  async deleteOne() {
+    const one = await this.getOne();
+    if (!one) return;
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    const id = (one as any).id;
+    if (!id) throw new Error('Document missing id; cannot deleteOne');
+    await adapter.deleteDocument(this.def.collectionName, id);
+  }
+
+  async update() {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!this.pendingUpdate) throw new Error('No update payload set; call to({ ... }) first');
+    const docs = await this.get();
+    for (const d of docs) {
+      const id = (d as any).id;
+      if (!id) throw new Error('Document missing id; cannot update');
+      await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
+    }
+  }
+
+  async updateOne() {
+    const adapter = this.manager.getAdapter(this.def.connectionName);
+    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!this.pendingUpdate) throw new Error('No update payload set; call to({ ... }) first');
+    const one = await this.getOne();
+    if (!one) return;
+    const id = (one as any).id;
+    if (!id) throw new Error('Document missing id; cannot updateOne');
+    await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
+  }
+}
+
+export class SchemaManager {
+  private schemas = new Map<string, SchemaDef>();
+  constructor(private connections: Connections) {}
+
+  create(name: string) {
+    if (this.schemas.has(name)) {
+      throw new Error(`Schema with name '${name}' already exists`);
+    }
+    return new SchemaBuilder(this, name);
+  }
+
+  register(def: SchemaDef) {
+    this.schemas.set(def.name, def);
+    return this;
+  }
+
+  use(name: string) {
+    const def = this.schemas.get(name);
+    if (!def) throw new Error(`Unknown schema '${name}'`);
+    return new SchemaQuery(this, def);
+  }
+
+  getAdapter(connectionName: string) {
+    return this.connections.getAdapter(connectionName);
   }
 
   list() {
@@ -29,6 +285,19 @@ export class Mapper {
   }
 }
 
-export default Mapper;
+export function connection() {
+  return new Connections();
+}
 
-export * from './orm';
+export function schema(conns?: Connections) {
+  const ctx = conns || new Connections();
+  return new SchemaManager(ctx);
+}
+
+export const schemas = (() => {
+  const conns = new Connections();
+  return new SchemaManager(conns);
+})();
+
+export { createOrm } from './orm';
+export type { DbAdapter, QueryOptions };

@@ -1,4 +1,3 @@
-
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -16,93 +15,146 @@ export default function DocumentationPage() {
             </CardHeader>
             <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
               <p>
-                Neup.Mapper is a powerful tool designed to streamline your database operations by providing a unified interface for various data sources, including Firestore, SQL databases, and generic REST APIs. It leverages AI to help you build schemas and operations, and provides a simple, intuitive browser for your data.
+                Neup.Mapper is a powerful tool designed to streamline your database operations by providing a unified interface for various data sources, including Firestore, SQL databases, MongoDB, and generic REST APIs. It provides simple, consistent interfaces, optional schema-driven forms, and AI helpers for modeling and operations.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-                <CardTitle>1. Configure Your Database</CardTitle>
+              <CardTitle>1. Create a Connection</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
-                <p>
-                    The first step is to connect to your data source on the <strong>Configure</strong> page. This is where you provide the credentials for your database or API.
-                </p>
-                <ul>
-                    <li>Select your database type (e.g., Firestore, SQL, API).</li>
-                    <li>Fill in the required credentials for the selected type.</li>
-                    <li>Click "Generate .env Content" to create the necessary environment variables.</li>
-                    <li>Download the generated <code>.env</code> file and place it in the root of your project. The application will automatically use these credentials.</li>
-                </ul>
-                <p className="text-muted-foreground">
-                    Note: This information is used to generate a local <code>.env</code> file. Your credentials are not stored or transmitted elsewhere.
-                </p>
+              <p>
+                Use the <strong>Configure</strong> page to add one or more connections. Each connection must have a unique <em>connection name</em> (e.g., <code>default</code>, <code>analytics</code>). Duplicate names are not allowed.
+              </p>
+              <ul>
+                <li>Select the database type: <code>Firestore</code>, <code>SQL</code>, <code>MongoDB</code>, or <code>API</code>.</li>
+                <li>Provide the required credentials for the selected type.</li>
+                <li>Click <strong>Apply Runtime Config</strong> to register the connection in the current session.</li>
+                <li>Use <strong>Generate collective .env</strong> to produce environment variables for all configured connections of the selected type.</li>
+                <li>Download the generated <code>.env</code> and place it at your project root.</li>
+              </ul>
+              <p className="text-muted-foreground">
+                Tip: Non-default connections in the generated <code>.env</code> use a suffix format like <code>__ANALYTICS</code>. For example, <code>DB_TYPE__ANALYTICS=Firestore</code>.
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-                <CardTitle>2. AI Schema Builder</CardTitle>
+              <CardTitle>2. Config File Placement & Access</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
-                <p>
-                    Go to the <strong>AI Schema Builder</strong> page. Here, you can describe your data in plain English.
-                </p>
-                <ul>
-                    <li>Select the database type you configured.</li>
-                    <li>Describe the data you want to model (e.g., "A user with a name, email, and a list of blog posts").</li>
-                    <li>The AI will generate a suggested JSON schema and provide a rationale for its design choices. This schema can be used as a starting point.</li>
-                </ul>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-                <CardTitle>3. Schema Builder</CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
-                <p>
-                    The <strong>Schema Builder</strong> page allows you to formalize the structure of your collections. While the data browser can work without a schema, defining one provides a much richer editing experience.
-                </p>
-                <ul>
-                    <li>Enter a collection name (e.g., `users`).</li>
-                    <li>Define the fields and their data types (string, number, boolean, etc.).</li>
-                    <li>For API connections, you can specify the endpoints for GET, CREATE, UPDATE, and DELETE operations.</li>
-                    <li>Saving a schema will cause the <strong>Data Browser</strong> to render a structured form for creating and editing documents in that collection.</li>
-                </ul>
+              <p>
+                Place your <code>.env</code> at the <strong>project root</strong> (same level as <code>package.json</code>). The app reads environment variables to build a default runtime configuration if no session connections exist.
+              </p>
+              <p>
+                You can also hardcode configuration in code for development and testing. Use a server-side initializer to call <code>setRuntimeDbConfig</code> with your config.
+              </p>
+              <pre><code>{`// Example: hardcode a Firestore connection during development
+'use server';
+import { setRuntimeDbConfig } from '@/app/actions';
+
+export async function initDevConnections() {
+  await setRuntimeDbConfig({
+    dbType: 'Firestore',
+    apiKey: '...',
+    authDomain: '...',
+    projectId: '...',
+    storageBucket: '...',
+    messagingSenderId: '...',
+    appId: '...'
+  }, 'default');
+
+  await setRuntimeDbConfig({
+    dbType: 'API',
+    basePath: 'https://api.example.com/v1',
+    apiKey: 'Bearer <token>'
+  }, 'analytics');
+}
+`}</code></pre>
+              <p>
+                To access configs later, use:
+              </p>
+              <pre><code>{`import { listConnections, getRuntimeDbConfig } from '@/app/actions';
+
+const names = await listConnections(); // ['default', 'analytics']
+const defaultCfg = await getRuntimeDbConfig('default');
+`}</code></pre>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-                <CardTitle>4. Data Browser</CardTitle>
+              <CardTitle>3. Build Schemas</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
-                <p>
-                    The <strong>Data Browser</strong> is your main interface for interacting with your data. It provides a simple ORM-like chainable API to perform CRUD (Create, Read, Update, Delete) operations.
-                </p>
-                <ul>
-                    <li><strong>Get Documents</strong>: Build queries using filters, sorting, limits, and offsets. The tool generates the equivalent code, which you can then execute.</li>
-                    <li><strong>Create Document</strong>: If a schema is defined for the collection, a form is automatically generated. Otherwise, you can create a document using raw JSON.</li>
-                    <li><strong>Update Document</strong>: Modify existing documents by providing their ID and the JSON data to merge.</li>
-                    <li><strong>Delete Document</strong>: Permanently remove a document by its ID.</li>
-                </ul>
+              <p>
+                Use the <strong>Schemas</strong> page to create schemas tied to a configured connection. Select a connection and define collection fields; API connections also allow endpoint hints.
+              </p>
+              <ul>
+                <li>Schemas are stored per connection and can be downloaded as <code>schemas.&lt;connection&gt;.json</code>.</li>
+                <li>Defining a schema enhances the Data Browser experience for create/update screens.</li>
+              </ul>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-                <CardTitle>5. AI Operation Builder</CardTitle>
+              <CardTitle>4. Access Data (env & hardcoded)</CardTitle>
             </CardHeader>
             <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
-                <p>
-                    Similar to the Schema Builder, the <strong>AI Operation Builder</strong> helps you generate code for database operations.
-                </p>
-                 <ul>
-                    <li>Describe the operation you want to perform (e.g., "Find all users older than 30 and sort them by name").</li>
-                    <li>The AI will generate the corresponding code snippet using the ORM.</li>
-                </ul>
+              <p>
+                Use the client-side <code>Connection</code> helper with an optional named connection to run queries. When omitted, the <code>default</code> connection is used (from env or session).
+              </p>
+              <pre><code>{`import { Connection } from '@/lib/orm/query-builder';
+
+// Read (with filters and fields)
+const users = await new Connection('default')
+  .collection('users')
+  .where('age', '>=', 18)
+  .sortBy('name', 'asc')
+  .limit(20)
+  .getDocuments('name', 'email');
+
+// Create
+const id = await new Connection('analytics')
+  .collection('events')
+  .add({ type: 'click', ts: Date.now() });
+
+// Update
+await new Connection()
+  .collection('users')
+  .update(id, { premium: true });
+
+// Delete
+await new Connection('default')
+  .collection('users')
+  .delete(id);
+`}</code></pre>
+              <p className="text-muted-foreground">
+                Environment-based configs are read automatically for <code>default</code>. Named connections require runtime config registration (via Configure page or hardcoded initializer).
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>5. Fetch Using Schemas</CardTitle>
+            </CardHeader>
+            <CardContent className="prose prose-sm md:prose-base max-w-none text-foreground">
+              <p>
+                Schemas enhance forms and defaults in the UI; programmatically, you continue using the <code>Connection</code> API. Choose the same connection in the Schemas page as in your code.
+              </p>
+              <p>
+                For API connections, endpoint hints in schemas are used by the UI; your code remains the same:
+              </p>
+              <pre><code>{`// Using a schema-defined 'products' collection
+const docs = await new Connection('default')
+  .collection('products')
+  .getDocuments('name', 'price');
+`}</code></pre>
             </CardContent>
           </Card>
         </article>
