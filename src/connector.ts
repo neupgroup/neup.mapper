@@ -92,9 +92,9 @@ export class Connector {
             connInterface = StaticMapper.makeConnection(this._name, this._type, this._config);
         } catch (e: any) {
             if (e.message && (e.message.includes('already exists') || e.message.includes('ConnectionExistingError'))) {
-                connInterface = StaticMapper.useConnection(this._name);
+                connInterface = StaticMapper.connection(this._name);
             } else {
-                connInterface = StaticMapper.useConnection(this._name);
+                connInterface = StaticMapper.connection(this._name);
             }
         }
 

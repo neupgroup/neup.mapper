@@ -1,9 +1,10 @@
-import { Connections, SchemaManager, schemas } from './index';
+import { Connections, SchemaManager, schemas } from './index.js';
 
 export class Mapper {
   private connections: Connections;
   private schemaManager: SchemaManager;
   private static instance: Mapper;
+  private configured = false;
 
   constructor() {
     this.connections = new Connections();
@@ -19,16 +20,19 @@ export class Mapper {
 
   // Auto-configuration based on environment or defaults
   autoConfigure(): this {
+    if (this.configured) return this;
+    this.configured = true;
+
     // Check for environment variables or config files
     const envConfig = this.detectEnvironmentConfig();
-    
+
     if (envConfig) {
       this.applyConfig(envConfig);
     } else {
       // Use sensible defaults
       this.applyDefaultConfig();
     }
-    
+
     return this;
   }
 
@@ -47,12 +51,12 @@ export class Mapper {
         };
       }
     }
-    
+
     // Check for browser environment with global config
     if (typeof window !== 'undefined' && (window as any).__MAPPER_CONFIG__) {
       return (window as any).__MAPPER_CONFIG__;
     }
-    
+
     return null;
   }
 
@@ -69,7 +73,7 @@ export class Mapper {
       const conn = config.connection;
       this.connections.create(conn.name, conn.type).key(conn.key);
     }
-    
+
     if (config.schemas) {
       for (const schemaConfig of config.schemas) {
         this.createSchema(schemaConfig);

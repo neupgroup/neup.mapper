@@ -1,5 +1,5 @@
-import { Connections, SchemaManager } from './index';
-import { createMapper } from './mapper';
+import { Connections, SchemaManager } from './index.js';
+import { createMapper } from './mapper.js';
 
 export interface DatabaseConnectionConfig {
   name: string;
@@ -28,7 +28,7 @@ export interface ConfigSchema {
   name: string;
   connection: string;
   collection: string;
-  structure?: Record<string, string> | Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' | 'int'; [key: string]: any }>;
+  structure?: Record<string, string> | Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' | 'int';[key: string]: any }>;
 }
 
 export interface MapperConfig {
@@ -124,7 +124,7 @@ export class ConfigBasedMapper {
 
   private initializeConnection(config: ConnectionConfig): void {
     const { name, type } = config;
-    
+
     if (type === 'api') {
       const apiConfig = config as ApiConnectionConfig;
       this.mapper.connect(name, type, apiConfig);
@@ -137,7 +137,7 @@ export class ConfigBasedMapper {
   private initializeSchema(config: ConfigSchema): void {
     const schemaBuilder = this.mapper.schema(config.name);
     schemaBuilder.use({ connection: config.connection, collection: config.collection });
-    
+
     if (config.structure) {
       schemaBuilder.setStructure(config.structure as any);
     }
@@ -233,7 +233,7 @@ export function getConfigMapper(): ConfigBasedMapper {
 // Create a default configured mapper instance
 export function createDefaultMapper(config?: MapperConfig): ConfigBasedMapper {
   const mapper = new ConfigBasedMapper();
-  
+
   // If no config provided, try to load from environment or default locations
   if (!config) {
     // Try to load from environment
@@ -255,7 +255,7 @@ export function createDefaultMapper(config?: MapperConfig): ConfigBasedMapper {
   } else {
     mapper.configure(config);
   }
-  
+
   return mapper;
 }
 
@@ -286,7 +286,7 @@ function loadConfigFromEnvironment(): MapperConfig | null {
       };
     }
   }
-  
+
   return null;
 }
 

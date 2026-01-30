@@ -54,8 +54,9 @@ const config = {
 const mapper = createConfigMapper(config)
 
 // Use the mapper
-await mapper.useConnection('mydb').table('users').add({ name: 'Alice', email: 'alice@example.com' })
-const users = await mapper.useConnection('mydb').table('users').select().execute()
+// Use the mapper
+await mapper.connection('mydb').table('users').insert({ name: 'Alice', email: 'alice@example.com' })
+const users = await mapper.connection('mydb').table('users').get()
 ```
 
 ### **Option 3: PHP-Style Fluent API**
@@ -73,18 +74,18 @@ Mapper.makeConnection('mydb', 'mysql', {
 })
 
 // Use connections with method chaining
-const users = await Mapper.useConnection('mydb')
+const users = await Mapper.connection('mydb')
   .table('users')
-  .select()
   .where('active', true)
-  .execute()
+  .get()
 
 // Create temporary connections on-the-fly
-const tempData = await Mapper.makeTempConnection('mongodb', {
+const tempData = await Mapper.connection({
+  type: 'mongodb',
   url: 'mongodb://localhost:27017',
   database: 'temp'
 })
   .collection('cache')
-  .find({ expired: false })
-  .execute()
+  .where('expired', false)
+  .get()
 ```

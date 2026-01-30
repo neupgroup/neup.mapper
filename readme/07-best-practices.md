@@ -45,10 +45,10 @@ const users = await Mapper.get('users')
 
 // Pattern 2: Configuration-Based
 const mapper = createConfigMapper(config)
-await mapper.useConnection('mydb').table('users').add(data)
+await mapper.connection('mydb').table('users').insert(data)
 
 // Pattern 3: Fluent API
-await StaticMapper.useConnection('mydb').table('users').add(data).execute()
+await StaticMapper.connection('mydb').table('users').insert(data)
 
 // Pattern 4: Complex queries
 const results = await Mapper.use('users')

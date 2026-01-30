@@ -84,10 +84,10 @@ export class Connector {
         }
         catch (e) {
             if (e.message && (e.message.includes('already exists') || e.message.includes('ConnectionExistingError'))) {
-                connInterface = StaticMapper.useConnection(this._name);
+                connInterface = StaticMapper.connection(this._name);
             }
             else {
-                connInterface = StaticMapper.useConnection(this._name);
+                connInterface = StaticMapper.connection(this._name);
             }
         }
         // Auto-define a schema for this table/collection if we are using one

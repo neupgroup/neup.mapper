@@ -1,6 +1,7 @@
-import { Connections, SchemaManager } from './index';
+import { Connections, SchemaManager } from './index.js';
 export class Mapper {
     constructor() {
+        this.configured = false;
         this.connections = new Connections();
         this.schemaManager = new SchemaManager(this.connections);
     }
@@ -12,6 +13,9 @@ export class Mapper {
     }
     // Auto-configuration based on environment or defaults
     autoConfigure() {
+        if (this.configured)
+            return this;
+        this.configured = true;
         // Check for environment variables or config files
         const envConfig = this.detectEnvironmentConfig();
         if (envConfig) {

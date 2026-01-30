@@ -1,3 +1,4 @@
+import { SchemaManager } from './index.js';
 export declare class FluentQueryBuilder {
     private mapper;
     private schemaName;
@@ -5,10 +6,14 @@ export declare class FluentQueryBuilder {
     constructor(mapper: any, schemaName: string);
     where(field: string, value: any, operator?: string): this;
     whereComplex(raw: string): this;
+    limit(n: number): this;
+    offset(n: number): this;
     to(update: Record<string, any>): this;
-    get(): Promise<Record<string, any>[]>;
+    get(...fields: string[]): any;
+    then(onfulfilled?: ((value: any) => any) | null, onrejected?: ((reason: any) => any) | null): Promise<any>;
     getOne(): Promise<Record<string, any> | null>;
     add(data: Record<string, any>): Promise<any>;
+    insert(data: Record<string, any>): Promise<any>;
     update(): Promise<void>;
     delete(): Promise<void>;
     deleteOne(): Promise<void>;
@@ -49,6 +54,9 @@ export declare class FluentConnectionSelector {
     constructor(mapper: any, connectionName: string);
     schema(schemaName: string): FluentSchemaBuilder;
     query(schemaName: string): FluentQueryBuilder;
+    table(tableName: string): FluentQueryBuilder;
+    collection(collectionName: string): FluentQueryBuilder;
+    schemas(schemaName: string): FluentSchemaWrapper;
 }
 export declare class FluentMapper {
     private mapper;
@@ -56,6 +64,7 @@ export declare class FluentMapper {
     query(schemaName: string): FluentQueryBuilder;
     makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
+    connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
@@ -67,9 +76,11 @@ export declare class StaticMapper {
     private static instance;
     private static getFluentMapper;
     static makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
-    static useConnection(connectionName: string): FluentConnectionSelector;
     static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
     static query(schemaName: string): FluentQueryBuilder;
+    static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
+    static useConnection(connectionName: string): FluentConnectionSelector;
+    static schemas(name: string): FluentSchemaWrapper;
     static get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     static getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     static add(schemaName: string, data: Record<string, any>): Promise<any>;
@@ -78,3 +89,20 @@ export declare class StaticMapper {
 }
 export declare const Mapper: typeof StaticMapper;
 export default Mapper;
+export declare class FluentSchemaWrapper {
+    private manager;
+    private name;
+    private connectionName?;
+    constructor(manager: SchemaManager, name: string, connectionName?: string | undefined);
+    private getDef;
+    set fields(config: any);
+    set insertableFields(val: string[]);
+    set updatableFields(val: string[]);
+    set deleteType(val: 'softDelete' | 'hardDelete');
+    set massDeleteAllowed(val: boolean);
+    set massEditAllowed(val: boolean);
+    get(...fields: string[]): any;
+    limit(n: number): FluentQueryBuilder;
+    offset(n: number): FluentQueryBuilder;
+    insert(data: Record<string, any>): Promise<any>;
+}

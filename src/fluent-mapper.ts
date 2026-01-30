@@ -22,13 +22,40 @@ export class FluentQueryBuilder {
     return this;
   }
 
+  limit(n: number): this {
+    this.query.limit(n);
+    return this;
+  }
+
+  offset(n: number): this {
+    this.query.offset(n);
+    return this;
+  }
+
   to(update: Record<string, any>): this {
     this.query.to(update);
     return this;
   }
 
-  async get(): Promise<Record<string, any>[]> {
-    return this.query.get();
+  // If args provided, act as SELECT (projection) and return this.
+  // If no args, act as execute() (but this class is thenable so we can just return this if we want consistency, 
+  // but existing API returns Promise directly. To check user intent:
+  // User: get('f1').limit(1).
+  // So get('f1') must return this.
+  get(...fields: string[]): any {
+    if (fields.length > 0) {
+      // Apply field selection? SchemaQuery needs a way to filter fields.
+      // We'll add this capability to Field filtering in SchemaQuery or just use 'fields' option in buildOptions.
+      // For now, let's assume we can modify the query's field list.
+      this.query.selectFields(fields);
+      return this;
+    }
+    return this.query.get(); // Promise
+  }
+
+  // Make the builder thenable
+  then(onfulfilled?: ((value: any) => any) | null, onrejected?: ((reason: any) => any) | null): Promise<any> {
+    return this.query.get().then(onfulfilled, onrejected);
   }
 
   async getOne(): Promise<Record<string, any> | null> {
@@ -37,6 +64,10 @@ export class FluentQueryBuilder {
 
   async add(data: Record<string, any>): Promise<any> {
     return this.mapper.add(this.schemaName, data);
+  }
+
+  async insert(data: Record<string, any>): Promise<any> {
+    return this.add(data);
   }
 
   async update(): Promise<void> {
@@ -67,7 +98,7 @@ export class FluentConnectionBuilder {
     this.connectionName = connectionName;
     this.connectionType = connectionType;
     this.connectionConfig = config;
-    
+
     // Create the connection immediately
     this.mapper.connect(connectionName, connectionType, config);
   }
@@ -114,11 +145,11 @@ export class FluentSchemaCollectionBuilder {
     this.collectionName = collectionName;
   }
 
-  structure(structure: Record<string, string> | Array<{ name: string; type: string; [key: string]: any }>): FluentMapper {
+  structure(structure: Record<string, string> | Array<{ name: string; type: string;[key: string]: any }>): FluentMapper {
     this.mapper.schema(this.schemaName)
       .use({ connection: this.connectionName, collection: this.collectionName })
       .setStructure(structure);
-    
+
     return new FluentMapper(this.mapper);
   }
 }
@@ -139,6 +170,22 @@ export class FluentConnectionSelector {
   query(schemaName: string): FluentQueryBuilder {
     return new FluentQueryBuilder(this.mapper, schemaName);
   }
+
+  table(tableName: string): FluentQueryBuilder {
+    return this.query(tableName);
+  }
+
+  collection(collectionName: string): FluentQueryBuilder {
+    return this.query(collectionName);
+  }
+
+  schemas(schemaName: string): FluentSchemaWrapper {
+    return new FluentSchemaWrapper(
+      this.mapper.getSchemaManager(),
+      schemaName,
+      this.connectionName
+    );
+  }
 }
 
 export class FluentMapper {
@@ -156,8 +203,28 @@ export class FluentMapper {
     return new FluentConnectionBuilder(this.mapper, name, type, config);
   }
 
+  // Deprecated: use connection() instead
   useConnection(connectionName: string): FluentConnectionSelector {
     return new FluentConnectionSelector(this.mapper, connectionName);
+  }
+
+  connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector {
+    if (typeof connectionOrConfig === 'string') {
+      return new FluentConnectionSelector(this.mapper, connectionOrConfig);
+    }
+    // Handle object config: create temp connection
+    // Expected format: { type: '...', ...others }
+    const type = connectionOrConfig.type;
+    if (!type) {
+      throw new Error("Connection configuration must specify 'type'");
+    }
+    const config = { ...connectionOrConfig };
+    delete config.type;
+
+    // Create temp connection
+    const tempName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    new FluentConnectionBuilder(this.mapper, tempName, type, config); // Registers it
+    return new FluentConnectionSelector(this.mapper, tempName);
   }
 
   makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder {
@@ -203,9 +270,7 @@ export class StaticMapper {
     return StaticMapper.getFluentMapper().makeConnection(name, type, config);
   }
 
-  static useConnection(connectionName: string): FluentConnectionSelector {
-    return StaticMapper.getFluentMapper().useConnection(connectionName);
-  }
+
 
   static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder {
     return StaticMapper.getFluentMapper().makeTempConnection(type, config);
@@ -213,6 +278,23 @@ export class StaticMapper {
 
   static query(schemaName: string): FluentQueryBuilder {
     return StaticMapper.getFluentMapper().query(schemaName);
+  }
+
+  // New API
+  static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector {
+    return StaticMapper.getFluentMapper().connection(connectionOrConfig);
+  }
+
+  // Deprecated alias
+  static useConnection(connectionName: string): FluentConnectionSelector {
+    return StaticMapper.connection(connectionName);
+  }
+
+  static schemas(name: string): FluentSchemaWrapper {
+    return new FluentSchemaWrapper(
+      (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager(), // Access underlying manager
+      name
+    );
   }
 
   // Direct static methods
@@ -237,6 +319,100 @@ export class StaticMapper {
   }
 }
 
+
 // Export a default instance for convenience
 export const Mapper = StaticMapper;
 export default Mapper;
+
+export class FluentSchemaWrapper {
+  // builder unused
+
+  constructor(private manager: SchemaManager, private name: string, private connectionName?: string) {
+    // Ensure schema exists or create it?
+    // User pattern: Mapper.schemas('name').fields = ...
+    // So we likely need to create it if missing, or update it.
+    try {
+      this.manager.create(name).use({ connection: connectionName || 'default', collection: name }).setStructure({});
+    } catch (e: any) {
+      // Ignore if exists, but maybe update connection if strictly provided?
+      // Use existing definition if available.
+    }
+  }
+
+  private getDef() {
+    // Access private map from manager? Or expose a get method.
+    // Manager has .schemas map.
+    return (this.manager as any).schemas.get(this.name);
+  }
+
+  set fields(config: any) {
+    // Update schema structure
+    const builder = new FluentSchemaBuilder(null, this.name, ''); // Dummy wrapper or use internal
+    // Easier: use Manager.create(name) returns SchemaBuilder which has setStructure.
+    // But if it exists, create() throws.
+    // We need 'update' or direct access.
+    // Let's hack: re-register or update def.
+    const def = this.getDef();
+    if (def) {
+      // Re-parse
+      const parsed = parseDescriptorStructure(config);
+      def.fields = parsed.fields;
+      def.fieldsMap = new Map();
+      def.fields.forEach((f: any) => def.fieldsMap.set(f.name, f));
+      def.allowUndefinedFields = parsed.allowUndefinedFields;
+    }
+  }
+
+  set insertableFields(val: string[]) {
+    const def = this.getDef();
+    if (def) def.insertableFields = val;
+  }
+
+  set updatableFields(val: string[]) {
+    const def = this.getDef();
+    if (def) def.updatableFields = val;
+  }
+
+  set deleteType(val: 'softDelete' | 'hardDelete') {
+    const def = this.getDef();
+    if (def) def.deleteType = val;
+  }
+
+  set massDeleteAllowed(val: boolean) {
+    const def = this.getDef();
+    if (def) def.massDeleteAllowed = val;
+  }
+
+  set massEditAllowed(val: boolean) {
+    const def = this.getDef();
+    if (def) def.massEditAllowed = val;
+  }
+
+  // Delegation to QueryBuilder
+  get(...fields: string[]) {
+    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
+    return q.get(...fields);
+  }
+
+  limit(n: number) {
+    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
+    return q.limit(n);
+  }
+
+  offset(n: number) {
+    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
+    return q.offset(n);
+  }
+
+  async insert(data: Record<string, any>): Promise<any> {
+    const q = new FluentQueryBuilder({
+      use: (n: string) => this.manager.use(n),
+      add: (n: string, d: any) => this.manager.use(n).add(d)
+    }, this.name);
+    return q.insert(data);
+  }
+}
+// Helper to access parseDescriptorStructure from index.ts if not exported?
+// It is NOT exported. I need to export it or duplicate logic.
+// I'll export it from index.ts.
+import { parseDescriptorStructure } from './index.js'; // fixed import at bottom

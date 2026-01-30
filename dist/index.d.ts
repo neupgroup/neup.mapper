@@ -1,4 +1,4 @@
-import type { DbAdapter, QueryOptions } from './orm';
+import type { DbAdapter, QueryOptions } from './orm/index.js';
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
 export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api';
 export interface Field {
@@ -7,14 +7,25 @@ export interface Field {
     editable?: boolean;
     autoIncrement?: boolean;
     nullable?: boolean;
-    defaultValue?: unknown;
+    defaultValue?: any;
+    isUnique?: boolean;
+    isForeignKey?: boolean;
+    foreignRef?: string;
+    enumValues?: any[];
+    config?: any[];
 }
 export interface SchemaDef {
     name: string;
     connectionName: string;
     collectionName: string;
     fields: Field[];
+    fieldsMap: Map<string, Field>;
     allowUndefinedFields?: boolean;
+    insertableFields?: string[];
+    updatableFields?: string[];
+    deleteType: 'softDelete' | 'hardDelete';
+    massDeleteAllowed: boolean;
+    massEditAllowed: boolean;
 }
 interface ConnectionConfig {
     name: string;
@@ -38,6 +49,10 @@ export declare class Connections {
     getAdapter(name: string): DbAdapter | undefined;
     list(): ConnectionConfig[];
 }
+export declare function parseDescriptorStructure(struct: Record<string, string | any[]>): {
+    fields: Field[];
+    allowUndefinedFields: boolean;
+};
 declare class SchemaBuilder {
     private manager;
     private name;
@@ -45,12 +60,24 @@ declare class SchemaBuilder {
     private collectionName?;
     private fields;
     private allowUndefinedFields;
+    private insertableFields?;
+    private updatableFields?;
+    private deleteType;
+    private massDeleteAllowed;
+    private massEditAllowed;
     constructor(manager: SchemaManager, name: string);
     use(options: {
         connection: string;
         collection: string;
     }): this;
-    setStructure(structure: Record<string, string> | Field[]): SchemaManager;
+    setOptions(options: {
+        insertableFields?: string[];
+        updatableFields?: string[];
+        deleteType?: 'softDelete' | 'hardDelete';
+        massDeleteAllowed?: boolean;
+        massEditAllowed?: boolean;
+    }): this;
+    setStructure(structure: Record<string, any> | Field[]): SchemaManager;
 }
 declare class SchemaQuery {
     private manager;
@@ -61,7 +88,12 @@ declare class SchemaQuery {
     private cachedAdapter;
     private cachedFieldNames;
     private allowedFields;
+    private _limit;
+    private _offset;
     constructor(manager: SchemaManager, def: SchemaDef);
+    limit(n: number): this;
+    offset(n: number): this;
+    selectFields(fields: string[]): this;
     where(fieldOrPair: string | [string, any], value?: any, operator?: string): this;
     whereComplex(raw: string): this;
     private buildOptions;
@@ -88,18 +120,18 @@ export declare class SchemaManager {
 export declare function connection(): Connections;
 export declare function schema(conns?: Connections): SchemaManager;
 export declare const schemas: SchemaManager;
-export { createOrm } from './orm';
+export { createOrm } from './orm/index.js';
 export type { DbAdapter, QueryOptions };
-export { parseConnectionsDsl, toNormalizedConnections } from './env';
-export type { EnvDslConnections, NormalizedConnection } from './env';
-export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs';
-export { Mapper, createMapper } from './mapper';
-export { default } from './mapper';
-export { StaticMapper } from './fluent-mapper';
-export type { FluentQueryBuilder, FluentConnectionBuilder, FluentSchemaBuilder, FluentSchemaCollectionBuilder, FluentConnectionSelector, FluentMapper } from './fluent-mapper';
-export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config';
-export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConnectionConfig, ConfigSchema } from './config';
-export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters';
-export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, APIAdapterConfig, AdapterConfig } from './adapters';
-export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors';
+export { parseConnectionsDsl, toNormalizedConnections } from './env.js';
+export type { EnvDslConnections, NormalizedConnection } from './env.js';
+export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs.js';
+export { Mapper, createMapper } from './mapper.js';
+export { default } from './mapper.js';
+export { StaticMapper } from './fluent-mapper.js';
+export type { FluentQueryBuilder, FluentConnectionBuilder, FluentSchemaBuilder, FluentSchemaCollectionBuilder, FluentConnectionSelector, FluentMapper } from './fluent-mapper.js';
+export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config.js';
+export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConnectionConfig, ConfigSchema } from './config.js';
+export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
+export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, APIAdapterConfig, AdapterConfig } from './adapters/index.js';
+export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors.js';
 export { Connector, mapper } from './connector.js';

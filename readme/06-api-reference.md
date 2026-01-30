@@ -14,24 +14,25 @@
 - `ConfigBasedMapper` → Class for configuration-based mapping
   - `configure(config)` → Configure the mapper
   - `makeConnection(name, type, config)` → Add connection
-  - `useConnection(name)` → Use specific connection
+  - `connection(name)` → Use specific connection
   - `getConnection(name)` → Get connection details
 
 ### **Fluent API (StaticMapper)**
 - `StaticMapper.makeConnection(name, type, config)` → Create persistent connection
-- `StaticMapper.useConnection(name)` → Use existing connection
-- `StaticMapper.makeTempConnection(type, config)` → Create temporary connection
+- `StaticMapper.connection(name)` → Use existing connection
+- `StaticMapper.connection(config)` → Create temporary connection
 - `StaticMapper.getConnection(name)` → Get connection by name
 - `StaticMapper.listConnections()` → List all connections
 
 ### **Query Builder Methods**
 - `table(name)` / `collection(name)` → Specify table/collection
-- `select()` / `find()` → Start select query
+- `select()` / `find()` / `get()` → Start select query / execute
 - `where(field, value, operator?)` → Add where condition
 - `orderBy(field, direction?)` → Add ordering
 - `limit(count)` → Limit results
-- `execute()` → Execute query
-- `add(data)` → Insert data
+- `offset(count)` → Offset results
+- `get()` / `getOne()` → Execute query
+- `insert(data)` → Insert data (alias: `add`)
 - `update(data)` → Update data
 - `delete()` → Delete data
 

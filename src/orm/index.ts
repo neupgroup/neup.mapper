@@ -1,4 +1,4 @@
-import type { DbAdapter, QueryOptions } from './types';
+import type { DbAdapter, QueryOptions } from './types.js';
 
 export function createOrm(adapter: DbAdapter) {
   return {

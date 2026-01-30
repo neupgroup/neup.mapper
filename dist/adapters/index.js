@@ -1,12 +1,12 @@
 // Export all adapters
-export { MySQLAdapter, createMySQLAdapter } from './mysql-adapter';
-export { PostgreSQLAdapter, createPostgreSQLAdapter } from './postgres-adapter';
-export { MongoDBAdapter, createMongoDBAdapter } from './mongodb-adapter';
-export { APIAdapter, createAPIAdapter } from './api-adapter';
-import { createMySQLAdapter } from './mysql-adapter';
-import { createPostgreSQLAdapter } from './postgres-adapter';
-import { createMongoDBAdapter } from './mongodb-adapter';
-import { createAPIAdapter } from './api-adapter';
+export { MySQLAdapter, createMySQLAdapter } from './mysql-adapter.js';
+export { PostgreSQLAdapter, createPostgreSQLAdapter } from './postgres-adapter.js';
+export { MongoDBAdapter, createMongoDBAdapter } from './mongodb-adapter.js';
+export { APIAdapter, createAPIAdapter } from './api-adapter.js';
+import { createMySQLAdapter } from './mysql-adapter.js';
+import { createPostgreSQLAdapter } from './postgres-adapter.js';
+import { createMongoDBAdapter } from './mongodb-adapter.js';
+import { createAPIAdapter } from './api-adapter.js';
 /**
  * Auto-create adapter based on connection type
  */

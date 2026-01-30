@@ -13,18 +13,45 @@ export class FluentQueryBuilder {
         this.query.whereComplex(raw);
         return this;
     }
+    limit(n) {
+        this.query.limit(n);
+        return this;
+    }
+    offset(n) {
+        this.query.offset(n);
+        return this;
+    }
     to(update) {
         this.query.to(update);
         return this;
     }
-    async get() {
-        return this.query.get();
+    // If args provided, act as SELECT (projection) and return this.
+    // If no args, act as execute() (but this class is thenable so we can just return this if we want consistency, 
+    // but existing API returns Promise directly. To check user intent:
+    // User: get('f1').limit(1).
+    // So get('f1') must return this.
+    get(...fields) {
+        if (fields.length > 0) {
+            // Apply field selection? SchemaQuery needs a way to filter fields.
+            // We'll add this capability to Field filtering in SchemaQuery or just use 'fields' option in buildOptions.
+            // For now, let's assume we can modify the query's field list.
+            this.query.selectFields(fields);
+            return this;
+        }
+        return this.query.get(); // Promise
+    }
+    // Make the builder thenable
+    then(onfulfilled, onrejected) {
+        return this.query.get().then(onfulfilled, onrejected);
     }
     async getOne() {
         return this.query.getOne();
     }
     async add(data) {
         return this.mapper.add(this.schemaName, data);
+    }
+    async insert(data) {
+        return this.add(data);
     }
     async update() {
         return this.query.update();
@@ -93,6 +120,15 @@ export class FluentConnectionSelector {
     query(schemaName) {
         return new FluentQueryBuilder(this.mapper, schemaName);
     }
+    table(tableName) {
+        return this.query(tableName);
+    }
+    collection(collectionName) {
+        return this.query(collectionName);
+    }
+    schemas(schemaName) {
+        return new FluentSchemaWrapper(this.mapper.getSchemaManager(), schemaName, this.connectionName);
+    }
 }
 export class FluentMapper {
     constructor(mapper) {
@@ -104,8 +140,26 @@ export class FluentMapper {
     makeConnection(name, type, config) {
         return new FluentConnectionBuilder(this.mapper, name, type, config);
     }
+    // Deprecated: use connection() instead
     useConnection(connectionName) {
         return new FluentConnectionSelector(this.mapper, connectionName);
+    }
+    connection(connectionOrConfig) {
+        if (typeof connectionOrConfig === 'string') {
+            return new FluentConnectionSelector(this.mapper, connectionOrConfig);
+        }
+        // Handle object config: create temp connection
+        // Expected format: { type: '...', ...others }
+        const type = connectionOrConfig.type;
+        if (!type) {
+            throw new Error("Connection configuration must specify 'type'");
+        }
+        const config = { ...connectionOrConfig };
+        delete config.type;
+        // Create temp connection
+        const tempName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        new FluentConnectionBuilder(this.mapper, tempName, type, config); // Registers it
+        return new FluentConnectionSelector(this.mapper, tempName);
     }
     makeTempConnection(type, config) {
         const tempName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -140,14 +194,23 @@ export class StaticMapper {
     static makeConnection(name, type, config) {
         return StaticMapper.getFluentMapper().makeConnection(name, type, config);
     }
-    static useConnection(connectionName) {
-        return StaticMapper.getFluentMapper().useConnection(connectionName);
-    }
     static makeTempConnection(type, config) {
         return StaticMapper.getFluentMapper().makeTempConnection(type, config);
     }
     static query(schemaName) {
         return StaticMapper.getFluentMapper().query(schemaName);
+    }
+    // New API
+    static connection(connectionOrConfig) {
+        return StaticMapper.getFluentMapper().connection(connectionOrConfig);
+    }
+    // Deprecated alias
+    static useConnection(connectionName) {
+        return StaticMapper.connection(connectionName);
+    }
+    static schemas(name) {
+        return new FluentSchemaWrapper(StaticMapper.getFluentMapper().mapper.getSchemaManager(), // Access underlying manager
+        name);
     }
     // Direct static methods
     static async get(schemaName, filters) {
@@ -169,3 +232,92 @@ export class StaticMapper {
 // Export a default instance for convenience
 export const Mapper = StaticMapper;
 export default Mapper;
+export class FluentSchemaWrapper {
+    // builder unused
+    constructor(manager, name, connectionName) {
+        this.manager = manager;
+        this.name = name;
+        this.connectionName = connectionName;
+        // Ensure schema exists or create it?
+        // User pattern: Mapper.schemas('name').fields = ...
+        // So we likely need to create it if missing, or update it.
+        try {
+            this.manager.create(name).use({ connection: connectionName || 'default', collection: name }).setStructure({});
+        }
+        catch (e) {
+            // Ignore if exists, but maybe update connection if strictly provided?
+            // Use existing definition if available.
+        }
+    }
+    getDef() {
+        // Access private map from manager? Or expose a get method.
+        // Manager has .schemas map.
+        return this.manager.schemas.get(this.name);
+    }
+    set fields(config) {
+        // Update schema structure
+        const builder = new FluentSchemaBuilder(null, this.name, ''); // Dummy wrapper or use internal
+        // Easier: use Manager.create(name) returns SchemaBuilder which has setStructure.
+        // But if it exists, create() throws.
+        // We need 'update' or direct access.
+        // Let's hack: re-register or update def.
+        const def = this.getDef();
+        if (def) {
+            // Re-parse
+            const parsed = parseDescriptorStructure(config);
+            def.fields = parsed.fields;
+            def.fieldsMap = new Map();
+            def.fields.forEach((f) => def.fieldsMap.set(f.name, f));
+            def.allowUndefinedFields = parsed.allowUndefinedFields;
+        }
+    }
+    set insertableFields(val) {
+        const def = this.getDef();
+        if (def)
+            def.insertableFields = val;
+    }
+    set updatableFields(val) {
+        const def = this.getDef();
+        if (def)
+            def.updatableFields = val;
+    }
+    set deleteType(val) {
+        const def = this.getDef();
+        if (def)
+            def.deleteType = val;
+    }
+    set massDeleteAllowed(val) {
+        const def = this.getDef();
+        if (def)
+            def.massDeleteAllowed = val;
+    }
+    set massEditAllowed(val) {
+        const def = this.getDef();
+        if (def)
+            def.massEditAllowed = val;
+    }
+    // Delegation to QueryBuilder
+    get(...fields) {
+        const q = new FluentQueryBuilder({ use: (n) => this.manager.use(n) }, this.name);
+        return q.get(...fields);
+    }
+    limit(n) {
+        const q = new FluentQueryBuilder({ use: (n) => this.manager.use(n) }, this.name);
+        return q.limit(n);
+    }
+    offset(n) {
+        const q = new FluentQueryBuilder({ use: (n) => this.manager.use(n) }, this.name);
+        return q.offset(n);
+    }
+    async insert(data) {
+        const q = new FluentQueryBuilder({
+            use: (n) => this.manager.use(n),
+            add: (n, d) => this.manager.use(n).add(d)
+        }, this.name);
+        return q.insert(data);
+    }
+}
+// Helper to access parseDescriptorStructure from index.ts if not exported?
+// It is NOT exported. I need to export it or duplicate logic.
+// I'll export it from index.ts.
+import { parseDescriptorStructure } from './index.js'; // fixed import at bottom

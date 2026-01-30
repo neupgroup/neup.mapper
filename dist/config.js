@@ -1,4 +1,4 @@
-import { createMapper } from './mapper';
+import { createMapper } from './mapper.js';
 export class ConfigLoader {
     static getInstance() {
         if (!ConfigLoader.instance) {

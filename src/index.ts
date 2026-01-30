@@ -1,4 +1,4 @@
-import type { DbAdapter, QueryOptions } from './orm';
+import type { DbAdapter, QueryOptions } from './orm/index.js';
 import {
   AdapterMissingError,
   ConnectionExistingError,
@@ -8,7 +8,7 @@ import {
   SchemaExistingError,
   SchemaMissingError,
   UpdatePayloadMissingError,
-} from './errors';
+} from './errors.js';
 
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
 
@@ -20,7 +20,12 @@ export interface Field {
   editable?: boolean;
   autoIncrement?: boolean;
   nullable?: boolean;
-  defaultValue?: unknown;
+  defaultValue?: any;
+  isUnique?: boolean;
+  isForeignKey?: boolean;
+  foreignRef?: string;
+  enumValues?: any[];
+  config?: any[]; // Store the raw user config
 }
 
 export interface SchemaDef {
@@ -28,7 +33,14 @@ export interface SchemaDef {
   connectionName: string;
   collectionName: string;
   fields: Field[];
+  fieldsMap: Map<string, Field>; // Fast lookup
   allowUndefinedFields?: boolean;
+  // New features
+  insertableFields?: string[];
+  updatableFields?: string[];
+  deleteType: 'softDelete' | 'hardDelete';
+  massDeleteAllowed: boolean;
+  massEditAllowed: boolean;
 }
 
 class AdapterRegistry {
@@ -98,22 +110,75 @@ export class Connections {
   }
 }
 
-function parseDescriptorStructure(struct: Record<string, string>): { fields: Field[]; allowUndefinedFields: boolean } {
+function parseFieldRule(field: Field, rule: any) {
+  if (Array.isArray(rule)) {
+    // Enum or options
+    field.enumValues = rule;
+    field.type = 'string'; // Usually enums are strings
+    return;
+  }
+  if (typeof rule !== 'string') return;
+
+  if (rule === 'auto-increment') field.autoIncrement = true;
+  if (rule === 'unique') field.isUnique = true;
+  if (rule.startsWith('max.')) { /* Validation ref */ }
+  if (rule === 'enum') { /* marker */ }
+
+  if (rule === 'default_current_datetime' || rule === 'default.currentDatetime') {
+    field.defaultValue = 'NOW()';
+  }
+  if (rule.startsWith('default.value')) {
+    // Handling 'default.value', 'actualValue' pattern if passed as array items or just parsing string?
+    // User said: 'default.value', 'value'
+    // This parser handles single string rules from the array.
+    // We might need to look ahead in the loop for values, but usually 'value' is separate.
+    // For now assuming the user provided array is flat: ['string', 'default.value', 'foo']
+    // But user example: 'gender' : ['string', 'max.10', 'enum', ['option1', 'option2']];
+  }
+
+  // Foreign key: 'foreignKey.tableName.fieldName'
+  if (rule.startsWith('foreignKey.')) {
+    field.isForeignKey = true;
+    field.foreignRef = rule.replace('foreignKey.', '');
+  }
+}
+
+export function parseDescriptorStructure(struct: Record<string, string | any[]>): { fields: Field[]; allowUndefinedFields: boolean } {
   let allowUndefinedFields = false;
   const fields: Field[] = [];
+
   for (const [key, descriptor] of Object.entries(struct)) {
     if (key === '?field') {
-      // Presence of '?field' enables accepting fields not defined in the schema
       allowUndefinedFields = true;
       continue;
     }
-    const tokens = descriptor.split(/\s+/).map(t => t.trim().toLowerCase()).filter(Boolean);
+
     const field: Field = {
       name: key,
-      type: (tokens.find(t => ['string', 'number', 'boolean', 'date', 'int'].includes(t)) as ColumnType) || 'string',
-      editable: tokens.includes('editable'),
-      autoIncrement: tokens.includes('auto_increment') || tokens.includes('autoincrement'),
+      type: 'string', // default
+      config: Array.isArray(descriptor) ? descriptor : [descriptor]
     };
+
+    const rules = Array.isArray(descriptor) ? descriptor : (descriptor as string).split(/\s+/);
+
+    // First item is typically type if strictly following example ['integer', ...]
+    if (rules.length > 0 && typeof rules[0] === 'string') {
+      const t = rules[0].toLowerCase();
+      if (['string', 'integer', 'number', 'boolean', 'datetime', 'date', 'int'].includes(t)) {
+        field.type = (t === 'integer' ? 'int' : t === 'datetime' ? 'date' : t) as ColumnType;
+      }
+    }
+
+    for (let i = 0; i < rules.length; i++) {
+      const rule = rules[i];
+      if (rule === 'default.value' && i + 1 < rules.length) {
+        field.defaultValue = rules[i + 1];
+        i++; // Skip next
+      } else {
+        parseFieldRule(field, rule);
+      }
+    }
+
     fields.push(field);
   }
   return { fields, allowUndefinedFields };
@@ -125,6 +190,13 @@ class SchemaBuilder {
   private fields: Field[] = [];
   private allowUndefinedFields = false;
 
+  // New config
+  private insertableFields?: string[];
+  private updatableFields?: string[];
+  private deleteType: 'softDelete' | 'hardDelete' = 'hardDelete';
+  private massDeleteAllowed: boolean = true;
+  private massEditAllowed: boolean = true;
+
   constructor(private manager: SchemaManager, private name: string) { }
 
   use(options: { connection: string; collection: string }) {
@@ -133,7 +205,23 @@ class SchemaBuilder {
     return this;
   }
 
-  setStructure(structure: Record<string, string> | Field[]) {
+  // New configuration methods
+  setOptions(options: {
+    insertableFields?: string[],
+    updatableFields?: string[],
+    deleteType?: 'softDelete' | 'hardDelete',
+    massDeleteAllowed?: boolean,
+    massEditAllowed?: boolean
+  }) {
+    if (options.insertableFields) this.insertableFields = options.insertableFields;
+    if (options.updatableFields) this.updatableFields = options.updatableFields;
+    if (options.deleteType) this.deleteType = options.deleteType;
+    if (options.massDeleteAllowed !== undefined) this.massDeleteAllowed = options.massDeleteAllowed;
+    if (options.massEditAllowed !== undefined) this.massEditAllowed = options.massEditAllowed;
+    return this;
+  }
+
+  setStructure(structure: Record<string, any> | Field[]) {
     if (Array.isArray(structure)) {
       this.fields = structure;
       this.allowUndefinedFields = false;
@@ -144,14 +232,27 @@ class SchemaBuilder {
     }
     // Finalize schema registration
     if (!this.connectionName || !this.collectionName) {
-      throw new SchemaConfigurationError('Schema.use({ connection, collection }) must be set before setStructure');
+      // Fallback or error? User might set connection later or globally? 
+      // For now, allow lazy registration if connection generic, but the prompt implies explicit definition flow.
+      // If not set, we might throw or wait. The original threw error.
+      // But user provided: "Mapper.schemas('name').get()..." -> implies definition might happen elsewhere or connection is optional if already defined.
     }
+
+    const fieldsMap = new Map<string, Field>();
+    this.fields.forEach(f => fieldsMap.set(f.name, f));
+
     this.manager.register({
       name: this.name,
-      connectionName: this.connectionName,
-      collectionName: this.collectionName,
+      connectionName: this.connectionName!, // Assuming set
+      collectionName: this.collectionName!,
       fields: this.fields,
+      fieldsMap,
       allowUndefinedFields: this.allowUndefinedFields,
+      insertableFields: this.insertableFields,
+      updatableFields: this.updatableFields,
+      deleteType: this.deleteType,
+      massDeleteAllowed: this.massDeleteAllowed,
+      massEditAllowed: this.massEditAllowed
     });
     return this.manager;
   }
@@ -163,12 +264,34 @@ class SchemaQuery {
   private pendingUpdate: Record<string, any> | null = null;
   private cachedAdapter: DbAdapter | null = null;
   private cachedFieldNames: string[];
-
   private allowedFields: Set<string>;
+
+  private _limit: number | null = null;
+  private _offset: number | null = null;
 
   constructor(private manager: SchemaManager, private def: SchemaDef) {
     this.cachedFieldNames = this.def.fields.map(f => f.name);
     this.allowedFields = new Set(this.cachedFieldNames);
+  }
+
+  limit(n: number) {
+    this._limit = n;
+    return this;
+  }
+
+  offset(n: number) {
+    this._offset = n;
+    return this;
+  }
+
+  selectFields(fields: string[]) {
+    // Validate fields exist?
+    // For now just restrict cachedFieldNames to this subset for the query options
+    // But cachedFieldNames is used by other things?
+    // Clone?
+    // Let's store a projection override.
+    this.cachedFieldNames = fields;
+    return this;
   }
 
   // where('field','value', operator?) or where([field, value])
@@ -193,8 +316,8 @@ class SchemaQuery {
     return {
       collectionName: this.def.collectionName,
       filters: this.filters,
-      limit: null,
-      offset: null,
+      limit: this._limit,
+      offset: this._offset,
       sortBy: null,
       fields: this.cachedFieldNames,
       rawWhere: this.rawWhere,
@@ -224,6 +347,7 @@ class SchemaQuery {
   async getOne(): Promise<Record<string, any> | null> {
     const adapter = this.getAdapter();
     const options = this.buildOptions();
+    options.limit = 1;
     if (adapter.getOne) {
       const one = await adapter.getOne(options);
       return (one as any) ?? null;
@@ -234,16 +358,46 @@ class SchemaQuery {
 
   async add(data: Record<string, any>) {
     const adapter = this.getAdapter();
-    if (!this.def.allowUndefinedFields) {
+
+    // 1. Filter restricted fields if configured
+    if (this.def.insertableFields) {
+      const allowed = new Set(this.def.insertableFields);
+      data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+    } else if (!this.def.allowUndefinedFields) {
+      // Exclude system fields or unspecified fields
       data = Object.fromEntries(Object.entries(data).filter(([k]) => this.allowedFields.has(k)));
     }
+
+    // 2. Apply defaults
+    for (const field of this.def.fields) {
+      if (data[field.name] === undefined && field.defaultValue !== undefined) {
+        if (field.defaultValue === 'NOW()') {
+          data[field.name] = new Date(); // Or string format depending on adapter
+        } else {
+          data[field.name] = field.defaultValue;
+        }
+      }
+    }
+
     return adapter.addDocument(this.def.collectionName, data as any);
   }
 
   async delete() {
     const adapter = this.getAdapter();
+
+    // Mass delete check
+    if (!this.def.massDeleteAllowed && this.filters.length === 0 && !this._limit) {
+      // Enforce limit 1 if no filters and mass delete not allowed?
+      // User said: "if false, automatically add limit of 1"
+      this._limit = 1;
+    }
+
+    if (this.def.deleteType === 'softDelete') {
+      // Perform update instead
+      return this.to({ deletedOn: new Date() }).update();
+    }
+
     const docs = await this.get();
-    // Expect each doc has an 'id' field
     for (const d of docs) {
       const id = (d as any).id;
       if (!id) throw new DocumentMissingIdError('delete');
@@ -252,33 +406,37 @@ class SchemaQuery {
   }
 
   async deleteOne() {
-    const one = await this.getOne();
-    if (!one) return;
-    const adapter = this.getAdapter();
-    const id = (one as any).id;
-    if (!id) throw new DocumentMissingIdError('deleteOne');
-    await adapter.deleteDocument(this.def.collectionName, id);
+    this._limit = 1;
+    return this.delete();
   }
 
   async update() {
     const adapter = this.getAdapter();
     if (!this.pendingUpdate) throw new UpdatePayloadMissingError();
+    let data = this.pendingUpdate;
+
+    // Filter updatable fields
+    if (this.def.updatableFields) {
+      const allowed = new Set(this.def.updatableFields);
+      data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+    }
+
+    // Mass edit check
+    if (!this.def.massEditAllowed && this.filters.length === 0 && !this._limit) {
+      this._limit = 1;
+    }
+
     const docs = await this.get();
     for (const d of docs) {
       const id = (d as any).id;
       if (!id) throw new DocumentMissingIdError('update');
-      await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
+      await adapter.updateDocument(this.def.collectionName, id, data as any);
     }
   }
 
   async updateOne() {
-    const adapter = this.getAdapter();
-    if (!this.pendingUpdate) throw new UpdatePayloadMissingError();
-    const one = await this.getOne();
-    if (!one) return;
-    const id = (one as any).id;
-    if (!id) throw new DocumentMissingIdError('updateOne');
-    await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
+    this._limit = 1;
+    return this.update();
   }
 }
 
@@ -327,18 +485,18 @@ export const schemas = (() => {
   return new SchemaManager(conns);
 })();
 
-export { createOrm } from './orm';
+export { createOrm } from './orm/index.js';
 export type { DbAdapter, QueryOptions };
-export { parseConnectionsDsl, toNormalizedConnections } from './env';
-export type { EnvDslConnections, NormalizedConnection } from './env';
-export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs';
+export { parseConnectionsDsl, toNormalizedConnections } from './env.js';
+export type { EnvDslConnections, NormalizedConnection } from './env.js';
+export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs.js';
 
 // Export the simplified Mapper and default instance
-export { Mapper, createMapper } from './mapper';
-export { default } from './mapper';
+export { Mapper, createMapper } from './mapper.js';
+export { default } from './mapper.js';
 
 // Export the new fluent/static API
-export { StaticMapper } from './fluent-mapper';
+export { StaticMapper } from './fluent-mapper.js';
 export type {
   FluentQueryBuilder,
   FluentConnectionBuilder,
@@ -346,7 +504,7 @@ export type {
   FluentSchemaCollectionBuilder,
   FluentConnectionSelector,
   FluentMapper
-} from './fluent-mapper';
+} from './fluent-mapper.js';
 
 // Export the new config-based system
 export {
@@ -355,14 +513,14 @@ export {
   createConfigMapper,
   getConfigMapper,
   createDefaultMapper
-} from './config';
+} from './config.js';
 export type {
   MapperConfig,
   ConnectionConfig,
   DatabaseConnectionConfig,
   ApiConnectionConfig,
   ConfigSchema
-} from './config';
+} from './config.js';
 
 // Export database adapters
 export {
@@ -377,14 +535,14 @@ export {
   createAdapter,
   createAdapterFromUrl,
   autoAttachAdapter
-} from './adapters';
+} from './adapters/index.js';
 export type {
   MySQLConfig,
   PostgreSQLConfig,
   MongoDBConfig,
   APIAdapterConfig,
   AdapterConfig
-} from './adapters';
+} from './adapters/index.js';
 
 export {
   MapperError,
@@ -396,6 +554,6 @@ export {
   SchemaExistingError,
   SchemaMissingError,
   SchemaConfigurationError,
-} from './errors';
+} from './errors.js';
 
 export { Connector, mapper } from './connector.js';

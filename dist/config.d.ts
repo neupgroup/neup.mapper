@@ -1,4 +1,4 @@
-import { Connections, SchemaManager } from './index';
+import { Connections, SchemaManager } from './index.js';
 export interface DatabaseConnectionConfig {
     name: string;
     type: 'mysql' | 'sql' | 'firestore' | 'mongodb';
@@ -55,7 +55,7 @@ export declare class ConfigBasedMapper {
     getSchemaManager(): SchemaManager;
     use(schemaName: string): any;
     schema(name: string): any;
-    connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): import("./mapper").Mapper;
+    connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): import("./mapper.js").Mapper;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     add(schemaName: string, data: Record<string, any>): Promise<any>;

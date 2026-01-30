@@ -1,8 +1,9 @@
-import { Connections, SchemaManager } from './index';
+import { Connections, SchemaManager } from './index.js';
 export declare class Mapper {
     private connections;
     private schemaManager;
     private static instance;
+    private configured;
     constructor();
     static getInstance(): Mapper;
     autoConfigure(): this;

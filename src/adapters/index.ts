@@ -1,14 +1,14 @@
 // Export all adapters
-export { MySQLAdapter, createMySQLAdapter, type MySQLConfig } from './mysql-adapter';
-export { PostgreSQLAdapter, createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter';
-export { MongoDBAdapter, createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter';
-export { APIAdapter, createAPIAdapter, type APIAdapterConfig } from './api-adapter';
+export { MySQLAdapter, createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
+export { PostgreSQLAdapter, createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
+export { MongoDBAdapter, createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
+export { APIAdapter, createAPIAdapter, type APIAdapterConfig } from './api-adapter.js';
 
-import type { DbAdapter } from '../orm/types';
-import { createMySQLAdapter, type MySQLConfig } from './mysql-adapter';
-import { createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter';
-import { createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter';
-import { createAPIAdapter, type APIAdapterConfig } from './api-adapter';
+import type { DbAdapter } from '../orm/types.js';
+import { createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
+import { createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
+import { createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
+import { createAPIAdapter, type APIAdapterConfig } from './api-adapter.js';
 
 export type AdapterConfig =
     | { type: 'mysql'; config: MySQLConfig }
