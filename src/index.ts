@@ -1,5 +1,14 @@
 import type { DbAdapter, QueryOptions } from './orm';
-import Mapper from './mapper';
+import {
+  AdapterMissingError,
+  ConnectionExistingError,
+  ConnectionUnknownError,
+  DocumentMissingIdError,
+  SchemaConfigurationError,
+  SchemaExistingError,
+  SchemaMissingError,
+  UpdatePayloadMissingError,
+} from './errors';
 
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
 
@@ -55,14 +64,14 @@ export class Connections {
 
   create(name: string, type: ConnectionType) {
     if (this.connections.has(name)) {
-      throw new Error(`Connection with name '${name}' already exists`);
+      throw new ConnectionExistingError(name);
     }
     return new ConnectionBuilder(this, name, type);
   }
 
   register(config: ConnectionConfig) {
     if (this.connections.has(config.name)) {
-      throw new Error(`Connection with name '${config.name}' already exists`);
+      throw new ConnectionExistingError(config.name);
     }
     this.connections.set(config.name, config);
     return this;
@@ -70,7 +79,7 @@ export class Connections {
 
   attachAdapter(name: string, adapter: DbAdapter) {
     if (!this.connections.has(name)) {
-      throw new Error(`Cannot attach adapter: unknown connection '${name}'`);
+      throw new ConnectionUnknownError('attach adapter', name);
     }
     this.adapters.attach(name, adapter);
     return this;
@@ -135,7 +144,7 @@ class SchemaBuilder {
     }
     // Finalize schema registration
     if (!this.connectionName || !this.collectionName) {
-      throw new Error('Schema.use({ connection, collection }) must be set before setStructure');
+      throw new SchemaConfigurationError('Schema.use({ connection, collection }) must be set before setStructure');
     }
     this.manager.register({
       name: this.name,
@@ -192,7 +201,7 @@ class SchemaQuery {
 
   async get(): Promise<Record<string, any>[]> {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
     const options = this.buildOptions();
     const docs = adapter.get ? await adapter.get(options) : await adapter.getDocuments(options);
     return docs as any;
@@ -200,7 +209,7 @@ class SchemaQuery {
 
   async getOne(): Promise<Record<string, any> | null> {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
     const options = this.buildOptions();
     if (adapter.getOne) {
       const one = await adapter.getOne(options);
@@ -212,7 +221,7 @@ class SchemaQuery {
 
   async add(data: Record<string, any>) {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
     if (!this.def.allowUndefinedFields) {
       const allowed = new Set(this.def.fields.map(f => f.name));
       data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
@@ -222,12 +231,12 @@ class SchemaQuery {
 
   async delete() {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
     const docs = await this.get();
     // Expect each doc has an 'id' field
     for (const d of docs) {
       const id = (d as any).id;
-      if (!id) throw new Error('Document missing id; cannot delete');
+      if (!id) throw new DocumentMissingIdError('delete');
       await adapter.deleteDocument(this.def.collectionName, id);
     }
   }
@@ -236,32 +245,32 @@ class SchemaQuery {
     const one = await this.getOne();
     if (!one) return;
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
     const id = (one as any).id;
-    if (!id) throw new Error('Document missing id; cannot deleteOne');
+    if (!id) throw new DocumentMissingIdError('deleteOne');
     await adapter.deleteDocument(this.def.collectionName, id);
   }
 
   async update() {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
-    if (!this.pendingUpdate) throw new Error('No update payload set; call to({ ... }) first');
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
+    if (!this.pendingUpdate) throw new UpdatePayloadMissingError();
     const docs = await this.get();
     for (const d of docs) {
       const id = (d as any).id;
-      if (!id) throw new Error('Document missing id; cannot update');
+      if (!id) throw new DocumentMissingIdError('update');
       await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
     }
   }
 
   async updateOne() {
     const adapter = this.manager.getAdapter(this.def.connectionName);
-    if (!adapter) throw new Error(`No adapter attached for connection '${this.def.connectionName}'`);
-    if (!this.pendingUpdate) throw new Error('No update payload set; call to({ ... }) first');
+    if (!adapter) throw new AdapterMissingError(this.def.connectionName);
+    if (!this.pendingUpdate) throw new UpdatePayloadMissingError();
     const one = await this.getOne();
     if (!one) return;
     const id = (one as any).id;
-    if (!id) throw new Error('Document missing id; cannot updateOne');
+    if (!id) throw new DocumentMissingIdError('updateOne');
     await adapter.updateDocument(this.def.collectionName, id, this.pendingUpdate as any);
   }
 }
@@ -272,7 +281,7 @@ export class SchemaManager {
 
   create(name: string) {
     if (this.schemas.has(name)) {
-      throw new Error(`Schema with name '${name}' already exists`);
+      throw new SchemaExistingError(name);
     }
     return new SchemaBuilder(this, name);
   }
@@ -284,7 +293,7 @@ export class SchemaManager {
 
   use(name: string) {
     const def = this.schemas.get(name);
-    if (!def) throw new Error(`Unknown schema '${name}'`);
+    if (!def) throw new SchemaMissingError(name);
     return new SchemaQuery(this, def);
   }
 
@@ -319,7 +328,7 @@ export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs';
 
 // Export the simplified Mapper and default instance
 export { Mapper, createMapper } from './mapper';
-export default Mapper;
+export { default } from './mapper';
 
 // Export the new fluent/static API
 export { StaticMapper } from './fluent-mapper';
@@ -369,3 +378,15 @@ export type {
   APIAdapterConfig,
   AdapterConfig
 } from './adapters';
+
+export {
+  MapperError,
+  AdapterMissingError,
+  UpdatePayloadMissingError,
+  DocumentMissingIdError,
+  ConnectionExistingError,
+  ConnectionUnknownError,
+  SchemaExistingError,
+  SchemaMissingError,
+  SchemaConfigurationError,
+} from './errors';

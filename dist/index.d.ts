@@ -96,3 +96,6 @@ export { StaticMapper } from './fluent-mapper';
 export type { FluentQueryBuilder, FluentConnectionBuilder, FluentSchemaBuilder, FluentSchemaCollectionBuilder, FluentConnectionSelector, FluentMapper } from './fluent-mapper';
 export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config';
 export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConnectionConfig, ConfigSchema } from './config';
+export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters';
+export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, APIAdapterConfig, AdapterConfig } from './adapters';
+export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors';
