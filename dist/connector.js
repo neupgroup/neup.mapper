@@ -1,4 +1,4 @@
-import { StaticMapper } from './fluent-mapper';
+import { StaticMapper } from './fluent-mapper.js';
 /**
  * A fluent builder for dynamic connections and ad-hoc queries.
  * This allows defining connections with runtime values (variables, env, etc.)
@@ -107,8 +107,8 @@ export class Connector {
 }
 /**
  * Factory function for cleaner syntax:
- * connection.name('db')...
+ * mapper('db').type('mysql')...
  */
-export function connection(name) {
+export function mapper(name) {
     return new Connector(name);
 }

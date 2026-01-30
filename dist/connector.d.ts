@@ -1,4 +1,4 @@
-import { ConnectionType } from './index';
+import { ConnectionType } from './index.js';
 /**
  * A fluent builder for dynamic connections and ad-hoc queries.
  * This allows defining connections with runtime values (variables, env, etc.)
@@ -40,11 +40,11 @@ export declare class Connector {
      * Define the table or collection to operate on.
      * This registers the connection (if not already) and prepares a query.
      */
-    table(tableName: string): import("./fluent-mapper").FluentQueryBuilder;
+    table(tableName: string): import("./fluent-mapper.js").FluentQueryBuilder;
     /**
      * Alias for table() for API endpoints (subpath).
      */
-    subpath(path: string): import("./fluent-mapper").FluentQueryBuilder;
+    subpath(path: string): import("./fluent-mapper.js").FluentQueryBuilder;
     /**
      * Finalizes the connection registration and returns a query object.
      */
@@ -52,6 +52,6 @@ export declare class Connector {
 }
 /**
  * Factory function for cleaner syntax:
- * connection.name('db')...
+ * mapper('db').type('mysql')...
  */
-export declare function connection(name?: string): Connector;
+export declare function mapper(name?: string): Connector;

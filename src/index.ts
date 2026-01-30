@@ -391,4 +391,4 @@ export {
   SchemaConfigurationError,
 } from './errors';
 
-export { Connector, connection as newConnection } from './connector';
+export { Connector, mapper } from './connector.js';

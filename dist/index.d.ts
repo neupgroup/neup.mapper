@@ -98,4 +98,4 @@ export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConne
 export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters';
 export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, APIAdapterConfig, AdapterConfig } from './adapters';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors';
-export { Connector, connection as newConnection } from './connector';
+export { Connector, mapper } from './connector.js';
