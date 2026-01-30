@@ -41,7 +41,7 @@ interface ConnectionConfig {
 }
 
 class ConnectionBuilder {
-  constructor(private manager: Connections, private name: string, private type: ConnectionType) {}
+  constructor(private manager: Connections, private name: string, private type: ConnectionType) { }
 
   key(config: Record<string, any>) {
     this.manager.register({ name: this.name, type: this.type, key: config });
@@ -116,7 +116,7 @@ class SchemaBuilder {
   private fields: Field[] = [];
   private allowUndefinedFields = false;
 
-  constructor(private manager: SchemaManager, private name: string) {}
+  constructor(private manager: SchemaManager, private name: string) { }
 
   use(options: { connection: string; collection: string }) {
     this.connectionName = options.connection;
@@ -153,7 +153,7 @@ class SchemaQuery {
   private rawWhere: string | null = null;
   private pendingUpdate: Record<string, any> | null = null;
 
-  constructor(private manager: SchemaManager, private def: SchemaDef) {}
+  constructor(private manager: SchemaManager, private def: SchemaDef) { }
 
   // where('field','value', operator?) or where([field, value])
   where(fieldOrPair: string | [string, any], value?: any, operator?: string) {
@@ -268,7 +268,7 @@ class SchemaQuery {
 
 export class SchemaManager {
   private schemas = new Map<string, SchemaDef>();
-  constructor(private connections: Connections) {}
+  constructor(private connections: Connections) { }
 
   create(name: string) {
     if (this.schemas.has(name)) {
@@ -323,13 +323,13 @@ export default Mapper;
 
 // Export the new fluent/static API
 export { StaticMapper } from './fluent-mapper';
-export type { 
-  FluentQueryBuilder, 
-  FluentConnectionBuilder, 
-  FluentSchemaBuilder, 
+export type {
+  FluentQueryBuilder,
+  FluentConnectionBuilder,
+  FluentSchemaBuilder,
   FluentSchemaCollectionBuilder,
   FluentConnectionSelector,
-  FluentMapper 
+  FluentMapper
 } from './fluent-mapper';
 
 // Export the new config-based system
@@ -347,3 +347,25 @@ export type {
   ApiConnectionConfig,
   ConfigSchema
 } from './config';
+
+// Export database adapters
+export {
+  MySQLAdapter,
+  createMySQLAdapter,
+  PostgreSQLAdapter,
+  createPostgreSQLAdapter,
+  MongoDBAdapter,
+  createMongoDBAdapter,
+  APIAdapter,
+  createAPIAdapter,
+  createAdapter,
+  createAdapterFromUrl,
+  autoAttachAdapter
+} from './adapters';
+export type {
+  MySQLConfig,
+  PostgreSQLConfig,
+  MongoDBConfig,
+  APIAdapterConfig,
+  AdapterConfig
+} from './adapters';
