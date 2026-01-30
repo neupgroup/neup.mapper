@@ -117,3 +117,43 @@ if (!config) {
   Mapper.connect('manual', 'mysql', { /* config */ })
 }
 ```
+
+## Dynamic Connections (Runtime/Connector)
+
+For dynamic environments where connection details come from runtime variables (cookies, session storage, function arguments, etc.), use the `Connector` fluent API. This allows defining ad-hoc connections and queries in a single chain.
+
+```ts
+import { Connector, newConnection } from '@neupgroup/mapper';
+
+// Example 1: Dynamic Database Connection
+const dbName = getTenantDbName(); // e.g. from session
+const dbPass = getSecurePassword(); 
+
+// Create connection and query 'users' table immediately
+await new Connector()
+  .name('tenant_db')
+  .type('mysql')
+  .config({
+    host: 'localhost',
+    user: 'admin',
+    password: dbPass,
+    database: dbName
+  })
+  .table('users')
+  .add({ name: 'New User', email: 'user@example.com' });
+
+// Example 2: Dynamic API Endpoint
+const apiToken = sessionStorage.getItem('apiKey');
+
+const api = newConnection('my_api')
+  .type('api')
+  .basePath('https://api.example.com')
+  .config({ headers: { Authorization: apiToken } })
+  .subpath('prospects'); // treats 'prospects' as the collection/table
+
+// Perform operations
+await api.add({ name: 'Lead 1' });
+const leads = await api.where('status', 'new').get();
+```
+
+This approach bypasses the global static configuration and creates/registers connections on the fly.

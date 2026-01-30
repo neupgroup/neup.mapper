@@ -1,4 +1,3 @@
-import Mapper from './mapper';
 import { AdapterMissingError, ConnectionExistingError, ConnectionUnknownError, DocumentMissingIdError, SchemaConfigurationError, SchemaExistingError, SchemaMissingError, UpdatePayloadMissingError, } from './errors';
 class AdapterRegistry {
     constructor() {
@@ -282,7 +281,7 @@ export { parseConnectionsDsl, toNormalizedConnections } from './env';
 export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs';
 // Export the simplified Mapper and default instance
 export { Mapper, createMapper } from './mapper';
-export default Mapper;
+export { default } from './mapper';
 // Export the new fluent/static API
 export { StaticMapper } from './fluent-mapper';
 // Export the new config-based system
@@ -290,3 +289,4 @@ export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, c
 // Export database adapters
 export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors';
+export { Connector, connection as newConnection } from './connector';

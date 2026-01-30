@@ -390,3 +390,5 @@ export {
   SchemaMissingError,
   SchemaConfigurationError,
 } from './errors';
+
+export { Connector, connection as newConnection } from './connector';
