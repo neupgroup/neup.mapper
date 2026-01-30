@@ -1,0 +1,119 @@
+# Configuration
+
+## Auto-Configuration Magic ✨
+
+The Mapper automatically configures itself based on your environment:
+
+- **Environment Variables**: `DATABASE_URL=mysql://user:pass@host:port/db`
+- **Browser Global**: `window.__MAPPER_CONFIG__`
+- **Default Fallback**: In-memory API connection for instant prototyping
+
+**Connection type auto-detection:**
+```
+mysql://...      → MySQL
+postgres://...   → PostgreSQL  
+mongodb://...    → MongoDB
+firestore://...  → Firestore
+```
+
+## Manual Configuration (Optional)
+
+```ts
+// Connect to your database
+Mapper.connect('mydb', 'mysql', {
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'password',
+  database: 'myapp'
+})
+
+// Or use environment variables
+// DATABASE_URL=mysql://root:password@localhost:3306/myapp
+```
+
+## 🌍 Environment Configuration Guide
+
+### **Node.js Environment Variables**
+
+The Mapper automatically detects these environment variables:
+
+```bash
+# Basic database URL (auto-detects type)
+DATABASE_URL=mysql://user:password@localhost:3306/myapp
+
+# Or specific connection types
+MYSQL_URL=mysql://user:password@localhost:3306/myapp
+POSTGRES_URL=postgres://user:password@localhost:5432/myapp
+MONGODB_URL=mongodb://localhost:27017/myapp
+FIRESTORE_URL=firestore://project-id
+```
+
+### **Browser Environment**
+
+For client-side applications, use the global configuration:
+
+```html
+<script>
+  window.__MAPPER_CONFIG__ = {
+    connection: {
+      name: 'api',
+      type: 'api',
+      key: {
+        endpoint: 'https://api.example.com',
+        apiKey: 'your-api-key'
+      }
+    },
+    schemas: [
+      {
+        name: 'users',
+        connection: 'api',
+        collection: 'users',
+        structure: [
+          { name: 'id', type: 'int' },
+          { name: 'name', type: 'string' }
+        ]
+      }
+    ]
+  }
+</script>
+```
+
+### **Configuration Priority Order**
+
+1. **Manual Configuration**: `Mapper.connect()` calls
+2. **Environment Variables**: `DATABASE_URL` and others
+3. **Browser Global**: `window.__MAPPER_CONFIG__`
+4. **Default Fallback**: In-memory API connection
+
+### **Docker & Production Setup**
+
+```dockerfile
+# Dockerfile
+ENV DATABASE_URL=mysql://user:password@db:3306/myapp
+```
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    environment:
+      - DATABASE_URL=mysql://user:password@db:3306/myapp
+```
+
+### **Configuration Validation**
+
+```ts
+import Mapper from '@neupgroup/mapper'
+
+// Check current configuration
+console.log('Connections:', Mapper.getConnections().list())
+console.log('Schemas:', Mapper.getSchemaManager().list())
+
+// Verify auto-configuration worked
+const config = Mapper.getConnections().get('default')
+if (!config) {
+  console.log('No auto-configuration detected, using manual setup...')
+  Mapper.connect('manual', 'mysql', { /* config */ })
+}
+```
