@@ -58,10 +58,14 @@ declare class SchemaQuery {
     private filters;
     private rawWhere;
     private pendingUpdate;
+    private cachedAdapter;
+    private cachedFieldNames;
+    private allowedFields;
     constructor(manager: SchemaManager, def: SchemaDef);
     where(fieldOrPair: string | [string, any], value?: any, operator?: string): this;
     whereComplex(raw: string): this;
     private buildOptions;
+    private getAdapter;
     to(update: Record<string, any>): this;
     get(): Promise<Record<string, any>[]>;
     getOne(): Promise<Record<string, any> | null>;

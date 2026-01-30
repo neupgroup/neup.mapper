@@ -119,6 +119,9 @@ class SchemaQuery {
         this.filters = [];
         this.rawWhere = null;
         this.pendingUpdate = null;
+        this.cachedAdapter = null;
+        this.cachedFieldNames = this.def.fields.map(f => f.name);
+        this.allowedFields = new Set(this.cachedFieldNames);
     }
     // where('field','value', operator?) or where([field, value])
     where(fieldOrPair, value, operator) {
@@ -140,31 +143,36 @@ class SchemaQuery {
     buildOptions() {
         return {
             collectionName: this.def.collectionName,
-            filters: this.filters.map(f => ({ field: f.field, operator: f.operator, value: f.value })),
+            filters: this.filters,
             limit: null,
             offset: null,
             sortBy: null,
-            fields: this.def.fields.map(f => f.name),
+            fields: this.cachedFieldNames,
             rawWhere: this.rawWhere,
         };
+    }
+    getAdapter() {
+        if (this.cachedAdapter)
+            return this.cachedAdapter;
+        const adapter = this.manager.getAdapter(this.def.connectionName);
+        if (!adapter)
+            throw new AdapterMissingError(this.def.connectionName);
+        this.cachedAdapter = adapter;
+        return adapter;
     }
     to(update) {
         this.pendingUpdate = update;
         return this;
     }
     async get() {
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         const options = this.buildOptions();
         const docs = adapter.get ? await adapter.get(options) : await adapter.getDocuments(options);
         return docs;
     }
     async getOne() {
         var _a;
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         const options = this.buildOptions();
         if (adapter.getOne) {
             const one = await adapter.getOne(options);
@@ -174,19 +182,14 @@ class SchemaQuery {
         return results[0] || null;
     }
     async add(data) {
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         if (!this.def.allowUndefinedFields) {
-            const allowed = new Set(this.def.fields.map(f => f.name));
-            data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+            data = Object.fromEntries(Object.entries(data).filter(([k]) => this.allowedFields.has(k)));
         }
         return adapter.addDocument(this.def.collectionName, data);
     }
     async delete() {
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         const docs = await this.get();
         // Expect each doc has an 'id' field
         for (const d of docs) {
@@ -200,18 +203,14 @@ class SchemaQuery {
         const one = await this.getOne();
         if (!one)
             return;
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         const id = one.id;
         if (!id)
             throw new DocumentMissingIdError('deleteOne');
         await adapter.deleteDocument(this.def.collectionName, id);
     }
     async update() {
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         if (!this.pendingUpdate)
             throw new UpdatePayloadMissingError();
         const docs = await this.get();
@@ -223,9 +222,7 @@ class SchemaQuery {
         }
     }
     async updateOne() {
-        const adapter = this.manager.getAdapter(this.def.connectionName);
-        if (!adapter)
-            throw new AdapterMissingError(this.def.connectionName);
+        const adapter = this.getAdapter();
         if (!this.pendingUpdate)
             throw new UpdatePayloadMissingError();
         const one = await this.getOne();
