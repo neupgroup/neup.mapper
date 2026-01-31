@@ -1,4 +1,4 @@
-import { Connections, SchemaManager, type SchemaDef } from './index.js';
+import { Connections, SchemaManager, type SchemaDef, ConnectionType } from './index.js';
 import { createMapper } from './mapper.js';
 import { TableMigrator } from './migrator.js';
 
@@ -305,7 +305,7 @@ export class FluentMapper {
     return new FluentQueryBuilder(this.mapper, schemaName);
   }
 
-  makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder {
+  makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder {
     return new FluentConnectionBuilder(this.mapper, name, type, config);
   }
 
@@ -333,7 +333,7 @@ export class FluentMapper {
     return new FluentConnectionSelector(this.mapper, tempName);
   }
 
-  makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder {
+  makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder {
     const tempName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return new FluentConnectionBuilder(this.mapper, tempName, type, config);
   }
@@ -372,13 +372,13 @@ export class StaticMapper {
     return StaticMapper.instance;
   }
 
-  static makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder {
+  static makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder {
     return StaticMapper.getFluentMapper().makeConnection(name, type, config);
   }
 
 
 
-  static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder {
+  static makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder {
     return StaticMapper.getFluentMapper().makeTempConnection(type, config);
   }
 

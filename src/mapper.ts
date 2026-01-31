@@ -1,4 +1,4 @@
-import { Connections, SchemaManager, schemas } from './index.js';
+import { Connections, SchemaManager, schemas, ConnectionType } from './index.js';
 import { autoAttachAdapter } from './adapters/index.js';
 
 export class Mapper {
@@ -61,9 +61,9 @@ export class Mapper {
     return null;
   }
 
-  private inferConnectionType(url: string): 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite' {
+  private inferConnectionType(url: string): ConnectionType {
     if (url.includes('mysql')) return 'mysql';
-    if (url.includes('postgres') || url.includes('postgresql')) return 'sql';
+    if (url.includes('postgres') || url.includes('postgresql')) return 'postgres';
     if (url.includes('mongodb')) return 'mongodb';
     if (url.includes('firestore')) return 'firestore';
     if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite')) return 'sqlite';
@@ -99,7 +99,7 @@ export class Mapper {
   }
 
   // Simplified API methods
-  connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): this {
+  connect(name: string, type: ConnectionType, config: Record<string, any>): this {
     this.connections.create(name, type).key(config);
     autoAttachAdapter(this.connections, name, type, config);
     return this;

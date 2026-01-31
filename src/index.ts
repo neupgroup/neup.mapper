@@ -12,7 +12,7 @@ import {
 
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
 
-export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite';
+export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'postgres' | 'api' | 'sqlite';
 
 export interface Field {
   name: string;
@@ -519,6 +519,7 @@ export type {
   ConnectionConfig,
   DatabaseConnectionConfig,
   ApiConnectionConfig,
+  SqliteConnectionConfig,
   ConfigSchema
 } from './config.js';
 

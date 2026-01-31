@@ -1,3 +1,4 @@
+import { ConnectionType } from './index.js';
 export type EnvDslConnections = Record<string, Record<string, string>>;
 
 function stripComments(input: string): string {
@@ -76,7 +77,7 @@ export function parseConnectionsDsl(text: string): EnvDslConnections {
 
 export type NormalizedConnection = {
   name: string;
-  type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite';
+  type: ConnectionType;
   key: Record<string, any>;
 };
 
@@ -88,7 +89,7 @@ export function toNormalizedConnections(map: EnvDslConnections): NormalizedConne
   const conns: NormalizedConnection[] = [];
   for (const [name, kv] of Object.entries(map)) {
     const rawType = (kv['type'] || kv['dbType'] || '').toLowerCase();
-    const type = (['mysql', 'sql', 'firestore', 'mongodb', 'api', 'sqlite'] as const).includes(rawType as any) ? (rawType as any) : 'api';
+    const type = (['mysql', 'sql', 'firestore', 'mongodb', 'postgres', 'api', 'sqlite'] as const).includes(rawType as any) ? (rawType as ConnectionType) : 'api';
     const { type: _omitType, dbType: _omitDbType, ...rest } = kv as any;
     conns.push({ name, type, key: rest });
   }

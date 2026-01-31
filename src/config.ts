@@ -1,9 +1,9 @@
-import { Connections, SchemaManager } from './index.js';
+import { Connections, SchemaManager, ConnectionType } from './index.js';
 import { createMapper } from './mapper.js';
 
 export interface DatabaseConnectionConfig {
   name: string;
-  type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'sqlite';
+  type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'postgres' | 'sqlite';
   host?: string;
   port?: number;
   database?: string;
@@ -176,7 +176,7 @@ export class ConfigBasedMapper {
     return this.mapper.schema(name);
   }
 
-  connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>) {
+  connect(name: string, type: ConnectionType, config: Record<string, any>) {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
@@ -300,9 +300,9 @@ function loadConfigFromEnvironment(): MapperConfig | null {
   return null;
 }
 
-function inferConnectionType(url: string): 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'sqlite' {
+function inferConnectionType(url: string): 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'postgres' | 'sqlite' {
   if (url.includes('mysql')) return 'mysql';
-  if (url.includes('postgres') || url.includes('postgresql')) return 'sql';
+  if (url.includes('postgres') || url.includes('postgresql')) return 'postgres';
   if (url.includes('mongodb')) return 'mongodb';
   if (url.includes('firestore')) return 'firestore';
   if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite')) return 'sqlite';
