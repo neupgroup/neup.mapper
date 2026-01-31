@@ -8,21 +8,21 @@
 ```ts
 import Mapper from '@neupgroup/mapper'
 
-// 1. Define a schema (Mapper auto-configures with sensible defaults)
-Mapper.schema('users')
-  .use({ connection: 'default', collection: 'users' })
-  .setStructure([
-    { name: 'id', type: 'int', autoIncrement: true },
-    { name: 'name', type: 'string' },
-    { name: 'email', type: 'string' }
-  ])
+// 1. Define a schema (Automatically registered in memory!)
+const users = Mapper.schema('users')
+  .collection('users')
+  .structure({
+    id: ['int', 'auto-increment'],
+    name: 'string',
+    email: 'unique'
+  })
 
-// 2. Use immediately - no setup required!
-await Mapper.add('users', { name: 'Alice', email: 'alice@example.com' })
-const users = await Mapper.get('users')
-const user = await Mapper.getOne('users', { email: 'alice@example.com' })
-await Mapper.update('users', { email: 'alice@example.com' }, { name: 'Alice Cooper' })
-await Mapper.delete('users', { email: 'alice@example.com' })
+// 2. Use immediately
+await users.add({ name: 'Alice', email: 'alice@example.com' })
+const allUsers = await users.limit(10).get()
+const alice = await users.where('email', 'alice@example.com').getOne()
+await users.where('email', 'alice@example.com').to({ name: 'Alice Cooper' }).update()
+await users.where('email', 'alice@example.com').delete()
 ```
 
 ### **Option 2: Configuration-Based Approach**
@@ -75,25 +75,26 @@ Mapper.makeConnection('mydb', 'mysql', {
 
 // Use connections with method chaining
 const users = await Mapper.connection('mydb')
-  .table('users')
+  .schema('users')
   .where('active', true)
   .get()
 
 // Create temporary connections on-the-fly
-const tempData = await Mapper.connection({
+const temp = Mapper.connection({
   type: 'mongodb',
-  url: 'mongodb://localhost:27017',
-  database: 'temp'
+  url: 'mongodb://localhost:27017'
 })
+
+const data = await temp.schema('prospects')
   .where('expired', false)
   .get()
 
 // SQLite connection
-const sqliteData = await Mapper.connection({
+const logs = await Mapper.connection({
   type: 'sqlite',
   filename: './local_store.db'
 })
-  .table('logs')
+  .schema('logs')
   .get()
 ```
 
@@ -112,7 +113,7 @@ import Mapper from '@neupgroup/mapper'
 await Mapper.discover()
 
 // Start querying
-const users = await Mapper.get('users')
+const users = await Mapper.schema('users').limit(10).get()
 ```
 
 ---

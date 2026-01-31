@@ -141,7 +141,7 @@ import { mapper } from '@neupgroup/mapper';
 const dbName = getTenantDbName(); // e.g. from session
 const dbPass = getSecurePassword(); 
 
-// Create connection and query 'users' table immediately
+// Create connection and query 'users' immediately
 await mapper('tenant_db')
   .type('mysql')
   .config({
@@ -150,7 +150,7 @@ await mapper('tenant_db')
     password: dbPass,
     database: dbName
   })
-  .table('users')
+  .schema('users')
   .add({ name: 'New User', email: 'user@example.com' });
 
 // Example 2: Dynamic API Endpoint
@@ -160,7 +160,7 @@ const api = mapper('my_api')
   .type('api')
   .basePath('https://api.example.com')
   .config({ headers: { Authorization: apiToken } })
-  .subpath('prospects'); // treats 'prospects' as the collection/table
+  .schema('prospects'); // treats 'prospects' as the collection/resource
 
 // Perform operations
 await api.add({ name: 'Lead 1' });

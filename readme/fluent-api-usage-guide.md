@@ -98,18 +98,18 @@ await api.path('/users/123').delete();
 
 ## Database Operations
 
-For database connections (mysql, postgres, mongodb), the connection selector also provides methods for table access.
+For database connections (mysql, postgres, mongodb), the connection selector also provides methods for schema access.
 
 \`\`\`ts
 const db = Mapper.connection('mysql_db');
 
-// Access a table and perform standard query
-const activeUsers = await db.table('users')
+// Access a schema and perform standard query
+const activeUsers = await db.schema('users')
   .where('status', 'active')
   .get();
 
-// Or use collection (alias for table)
-const sessions = await db.collection('sessions').get();
+// You can still use table() or collection() as aliases
+const sessions = await db.table('sessions').get();
 \`\`\`
 
 ---

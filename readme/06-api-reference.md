@@ -25,7 +25,8 @@
 - `StaticMapper.listConnections()` → List all connections
 
 ### **Query Builder Methods**
-- `table(name)` / `collection(name)` → Specify table/collection for query building
+- `schema(name)` → Universal query/migration builder (entry point)
+- `table(name)` / `collection(name)` → Aliases for `schema(name)`
 - `path(segment)` → Add path segment for API requests
 - `header(key, value)` / `headers(obj)` → Add custom headers for requests
 - `where(field, value, operator?)` → Add where condition for database queries

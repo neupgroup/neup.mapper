@@ -54,34 +54,34 @@ import { Mapper, TableMigrator } from '@neupgroup/mapper';
 export const usesConnection = 'default';
 
 export async function up() {
-    const table = Mapper.schemas().table('${tableName}');
-    table.useConnection(usesConnection);
+    const schema = Mapper.schema().table('${tableName}');
+    schema.useConnection(usesConnection);
 
     /**
-     * CASE 1: CREATE TABLE (Requires .exec())
-     * Use this when defining a new table. addColumn calls are batched.
+     * CASE 1: CREATE SCHEMA (Requires .exec())
+     * Use this when defining a new schema. addColumn calls are batched.
      */
-    // table.addColumn('id').type('int').isPrimary().autoIncrement();
-    // table.addColumn('name').type('string').notNull();
-    // await table.exec(); 
+    // schema.addColumn('id').type('int').isPrimary().autoIncrement();
+    // schema.addColumn('name').type('string').notNull();
+    // await schema.exec(); 
 
     /**
-     * CASE 2: ALTER TABLE (Queued actions)
+     * CASE 2: ALTER SCHEMA (Queued actions)
      * These methods are queued and only execute when you call .exec()
      */
-    // table.dropColumn('old_field');
-    // table.dropUnique('field_name');
-    // await table.exec();
+    // schema.dropColumn('old_field');
+    // schema.dropUnique('field_name');
+    // await schema.exec();
 }
 
 export async function down() {
     /**
-     * DROP TABLE (Immediate action)
-     * This will drop the table from the DB and delete the local schema file.
+     * DROP SCHEMA (Immediate action)
+     * This will drop the schema from the DB and delete the local schema file.
      */
-    const table = Mapper.schemas().table('${tableName}');
-    table.useConnection(usesConnection);
-    await table.dropTable().exec();
+    const schema = Mapper.schema().table('${tableName}');
+    schema.useConnection(usesConnection);
+    await schema.dropTable().exec();
 }
 `;
 

@@ -40,7 +40,7 @@ export class SchemaExistingError extends MapperError {
 }
 export class SchemaMissingError extends MapperError {
     constructor(name) {
-        super(`Unknown schema '${name}'.`, 'SCHEMA_UNKNOWN', `Ensure you have defined the schema '${name}' using 'Mapper.schema().create("${name}")...'`);
+        super(`Unknown schema '${name}'.`, 'SCHEMA_UNKNOWN', `The schema '${name}' is not registered. Ensure you have run migrations, called 'Mapper.discover()', or defined it manually using 'Mapper.schema().create("${name}")'.`);
     }
 }
 export class SchemaConfigurationError extends MapperError {

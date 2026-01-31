@@ -6,11 +6,106 @@ export class FluentQueryBuilder {
   private mapper: any;
   private schemaName: string;
   private query: any;
+  private _migrator?: TableMigrator;
 
-  constructor(mapper: any, schemaName: string) {
+  constructor(mapper: any, schemaName: string, connectionName?: string) {
     this.mapper = mapper;
     this.schemaName = schemaName;
-    this.query = mapper.use(schemaName);
+    try {
+      this.query = mapper.use(schemaName);
+      if (connectionName) {
+        const def = this.getDef();
+        if (def) def.connectionName = connectionName;
+      }
+    } catch (e) {
+      // Auto-register schema if missing (Automatically schemas!)
+      mapper.getSchemaManager().create(schemaName).use({ connection: connectionName || 'default', collection: schemaName }).setStructure({});
+      this.query = mapper.use(schemaName);
+    }
+  }
+
+  getDef(): SchemaDef {
+    return (this.mapper.getSchemaManager() as any).schemas.get(this.schemaName);
+  }
+
+  set fields(config: any) {
+    const def = this.getDef();
+    if (def) {
+      const parsed = parseDescriptorStructure(config);
+      def.fields = parsed.fields;
+      def.fieldsMap = new Map();
+      def.fields.forEach((f: any) => def.fieldsMap.set(f.name, f));
+      def.allowUndefinedFields = parsed.allowUndefinedFields;
+    }
+  }
+
+  set insertableFields(val: string[]) {
+    const def = this.getDef();
+    if (def) def.insertableFields = val;
+  }
+
+  set updatableFields(val: string[]) {
+    const def = this.getDef();
+    if (def) def.updatableFields = val;
+  }
+
+  set deleteType(val: 'softDelete' | 'hardDelete') {
+    const def = this.getDef();
+    if (def) def.deleteType = val;
+  }
+
+  set massDeleteAllowed(val: boolean) {
+    const def = this.getDef();
+    if (def) def.massDeleteAllowed = val;
+  }
+
+  set massEditAllowed(val: boolean) {
+    const def = this.getDef();
+    if (def) def.massEditAllowed = val;
+  }
+
+  structure(config: any): this {
+    this.fields = config;
+    return this;
+  }
+
+  collection(collectionName: string): this {
+    const def = this.getDef();
+    if (def) def.collectionName = collectionName;
+    return this;
+  }
+
+  get migrator(): TableMigrator {
+    if (!this._migrator) {
+      this._migrator = new TableMigrator(this.schemaName);
+      // Sync connection if already set on query
+      const def = this.getDef();
+      if (def?.connectionName) {
+        this._migrator.useConnection(def.connectionName);
+      }
+    }
+    return this._migrator;
+  }
+
+  // Migration/DDL Methods (Proxied to internal migrator)
+  useConnection(name: string): this {
+    this.migrator.useConnection(name);
+    const def = this.getDef();
+    if (def) def.connectionName = name;
+    return this;
+  }
+
+  addColumn(name: string) { return this.migrator.addColumn(name); }
+  selectColumn(name: string) { return this.migrator.selectColumn(name); }
+  dropColumn(name: string) { this.migrator.dropColumn(name); return this; }
+  drop() { this.migrator.drop(); return this; }
+
+  async exec(): Promise<void> {
+    return this.migrator.exec();
+  }
+
+  async dropTable(): Promise<void> {
+    return this.migrator.drop().exec();
   }
 
   where(field: string, value: any, operator?: string): this {
@@ -236,29 +331,26 @@ export class FluentConnectionSelector {
     this.connectionName = connectionName;
   }
 
-  schema(schemaName: string): FluentSchemaBuilder {
-    return new FluentSchemaBuilder(this.mapper, schemaName, this.connectionName);
+  schema(schemaName: string): FluentQueryBuilder {
+    return new FluentQueryBuilder(this.mapper, schemaName, this.connectionName);
+  }
+
+  schemas(schemaName: string): FluentQueryBuilder {
+    return this.schema(schemaName);
   }
 
   query(schemaName: string): FluentQueryBuilder {
-    return new FluentQueryBuilder(this.mapper, schemaName);
+    return this.schema(schemaName);
   }
 
   table(tableName: string): FluentQueryBuilder {
-    return this.query(tableName);
+    return this.schema(tableName);
   }
 
   collection(collectionName: string): FluentQueryBuilder {
-    return this.query(collectionName);
+    return this.schema(collectionName);
   }
 
-  schemas(schemaName: string): FluentSchemaWrapper {
-    return new FluentSchemaWrapper(
-      this.mapper.getSchemaManager(),
-      schemaName,
-      this.connectionName
-    );
-  }
 
   // API Request methods
   path(path: string): FluentApiRequestBuilder {
@@ -303,6 +395,10 @@ export class FluentMapper {
 
   query(schemaName: string): FluentQueryBuilder {
     return new FluentQueryBuilder(this.mapper, schemaName);
+  }
+
+  schema(name: string): FluentQueryBuilder {
+    return this.query(name);
   }
 
   table(name: string): FluentQueryBuilder {
@@ -394,8 +490,15 @@ export class StaticMapper {
     return StaticMapper.getFluentMapper().query(schemaName);
   }
 
+  static schema(name: string): FluentQueryBuilder;
+  static schema(): SchemaManagerWrapper;
+  static schema(name?: string): any {
+    if (name) return StaticMapper.getFluentMapper().schema(name);
+    return StaticMapper.schemas();
+  }
+
   static table(name: string): FluentQueryBuilder {
-    return StaticMapper.query(name);
+    return StaticMapper.schema(name);
   }
 
   // New API
@@ -408,13 +511,8 @@ export class StaticMapper {
     return StaticMapper.connection(connectionName);
   }
 
-  static schemas(name?: string): FluentSchemaWrapper | SchemaManagerWrapper {
-    if (name) {
-      return new FluentSchemaWrapper(
-        (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager(),
-        name
-      );
-    }
+  static schemas(name?: string): any {
+    if (name) return StaticMapper.schema(name);
     return new SchemaManagerWrapper(
       (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager()
     );
@@ -460,102 +558,6 @@ export class StaticMapper {
 export const Mapper = StaticMapper;
 export default Mapper;
 
-export class FluentSchemaWrapper {
-  // builder unused
-
-  constructor(private manager: SchemaManager, private name: string, private connectionName?: string) {
-    // Ensure schema exists or create it?
-    // User pattern: Mapper.schemas('name').fields = ...
-    // So we likely need to create it if missing, or update it.
-    try {
-      this.manager.create(name).use({ connection: connectionName || 'default', collection: name }).setStructure({});
-    } catch (e: any) {
-      // Ignore if exists, but maybe update connection if strictly provided?
-      // Use existing definition if available.
-    }
-  }
-
-  private getDef() {
-    // Access private map from manager? Or expose a get method.
-    // Manager has .schemas map.
-    return (this.manager as any).schemas.get(this.name);
-  }
-
-  set fields(config: any) {
-    // Update schema structure
-    const builder = new FluentSchemaBuilder(null, this.name, ''); // Dummy wrapper or use internal
-    // Easier: use Manager.create(name) returns SchemaBuilder which has setStructure.
-    // But if it exists, create() throws.
-    // We need 'update' or direct access.
-    // Let's hack: re-register or update def.
-    const def = this.getDef();
-    if (def) {
-      // Re-parse
-      const parsed = parseDescriptorStructure(config);
-      def.fields = parsed.fields;
-      def.fieldsMap = new Map();
-      def.fields.forEach((f: any) => def.fieldsMap.set(f.name, f));
-      def.allowUndefinedFields = parsed.allowUndefinedFields;
-    }
-  }
-
-  set insertableFields(val: string[]) {
-    const def = this.getDef();
-    if (def) def.insertableFields = val;
-  }
-
-  set updatableFields(val: string[]) {
-    const def = this.getDef();
-    if (def) def.updatableFields = val;
-  }
-
-  set deleteType(val: 'softDelete' | 'hardDelete') {
-    const def = this.getDef();
-    if (def) def.deleteType = val;
-  }
-
-  set massDeleteAllowed(val: boolean) {
-    const def = this.getDef();
-    if (def) def.massDeleteAllowed = val;
-  }
-
-  set massEditAllowed(val: boolean) {
-    const def = this.getDef();
-    if (def) def.massEditAllowed = val;
-  }
-
-  // Delegation to QueryBuilder
-  get(...fields: string[]) {
-    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
-    return q.get(...fields);
-  }
-
-  limit(n: number) {
-    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
-    return q.limit(n);
-  }
-
-  offset(n: number) {
-    const q = new FluentQueryBuilder({ use: (n: string) => this.manager.use(n) }, this.name);
-    return q.offset(n);
-  }
-
-  async insert(data: Record<string, any>): Promise<any> {
-    const q = new FluentQueryBuilder({
-      use: (n: string) => this.manager.use(n),
-      add: (n: string, d: any) => this.manager.use(n).add(d)
-    }, this.name);
-    return q.insert(data);
-  }
-
-  async dropTable(): Promise<void> {
-    const migrator = new TableMigrator(this.name);
-    if (this.connectionName) {
-      migrator.useConnection(this.connectionName);
-    }
-    return migrator.drop().exec();
-  }
-}
 // Helper to access parseDescriptorStructure from index.ts if not exported?
 // It is NOT exported. I need to export it or duplicate logic.
 // I'll export it from index.ts.
@@ -567,6 +569,10 @@ export class SchemaManagerWrapper {
   table(name: string): TableMigrator {
     // This allows Mapper.schemas().table('name') to return a migrator
     return new TableMigrator(name);
+  }
+
+  schema(name: string): TableMigrator {
+    return this.table(name);
   }
 
   async dropTable(name: string): Promise<void> {

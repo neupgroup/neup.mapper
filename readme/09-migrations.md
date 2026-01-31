@@ -46,47 +46,59 @@ npm run migrate refresh
 
 ## 📝 Writing Migrations
 
-Migrations use a **deferred execution model**. You queue operations and they are applied only when you call `await table.exec()`.
+Migrations use a **deferred execution model**. You queue operations and they are applied only when you call `await schema.exec()`.
 
-### **Creating a Table**
+### **Creating a Schema**
 ```ts
 export const usesConnection = 'primary'; // Target connection
 
 export async function up() {
-    const table = Mapper.schemas().table('users');
-    table.useConnection(usesConnection);
+    // schema() is the universal entry point for SQL, NoSQL and API
+    const schema = Mapper.schema('users');
+    schema.useConnection(usesConnection);
 
-    table.addColumn('id').type('int').isPrimary().autoIncrement();
-    table.addColumn('username').type('string').notNull();
-    table.addColumn('email').type('string').isUnique();
+    schema.addColumn('id').type('int').isPrimary().autoIncrement();
+    schema.addColumn('username').type('string').notNull();
+    schema.addColumn('email').type('string').isUnique();
     
-    await table.exec(); // Creates table & src/schemas/users.ts
+    await schema.exec(); // Creates DB table & src/schemas/users.ts
 }
 ```
 
-### **Altering a Table**
+### **Altering a Schema**
 ```ts
 export async function up() {
-    const table = Mapper.schemas().table('users');
+    const schema = Mapper.schema('users');
     
     // Select existing column to modify
-    table.selectColumn('email').type('string').notNull();
+    schema.selectColumn('email').type('string').notNull();
     
     // Drop columns or constraints
-    table.dropColumn('old_field');
-    table.selectColumn('temp_tag').drop();
+    schema.dropColumn('old_field');
+    schema.selectColumn('temp_tag').drop();
 
-    await table.exec(); // Updates DB & src/schemas/users.ts
+    await schema.exec(); // Updates DB & src/schemas/users.ts
 }
 ```
 
-### **Dropping a Table**
+### **Dropping a Schema**
 ```ts
 export async function down() {
-    const table = Mapper.schemas().table('users');
-    await table.dropTable().exec(); // Drops DB table & deletes schema file
+    const schema = Mapper.schema('users');
+    await schema.dropTable().exec(); // Drops DB table & deletes local schema file
 }
 ```
+
+---
+
+## 🚀 Automatic Schemas
+You no longer need to manually register schemas. As soon as you create a migration, the system is aware of the schema name. 
+
+In your application code, simply call:
+```ts
+const users = await Mapper.schema('users').get();
+```
+The library will automatically register a placeholder schema in memory if one hasn't been discovered on disk yet.
 
 ---
 
