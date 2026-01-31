@@ -1,6 +1,6 @@
 {
   "name": "@neupgroup/mapper",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Neup.Mapper core library for schema and mapping utilities",
   "type": "module",
   "main": "dist/index.js",
@@ -31,5 +31,11 @@
   "devDependencies": {
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "mongodb": "^7.0.0",
+    "mysql2": "^3.16.2",
+    "pg": "^8.18.0",
+    "sqlite3": "^5.1.7"
   }
 }
