@@ -360,7 +360,7 @@ export class FluentMapper {
   }
 
   async dropTable(name: string): Promise<void> {
-    return new TableMigrator(name).drop();
+    return new TableMigrator(name).drop().exec();
   }
 }
 
@@ -435,6 +435,10 @@ export class StaticMapper {
 
   static async dropTable(name: string): Promise<void> {
     return StaticMapper.getFluentMapper().dropTable(name);
+  }
+
+  static getConnections(): Connections {
+    return (StaticMapper.getFluentMapper() as any).mapper.getConnections();
   }
 }
 
@@ -536,7 +540,7 @@ export class FluentSchemaWrapper {
     if (this.connectionName) {
       migrator.useConnection(this.connectionName);
     }
-    return migrator.drop();
+    return migrator.drop().exec();
   }
 }
 // Helper to access parseDescriptorStructure from index.ts if not exported?
@@ -553,6 +557,6 @@ export class SchemaManagerWrapper {
   }
 
   async dropTable(name: string): Promise<void> {
-    return new TableMigrator(name).drop();
+    return new TableMigrator(name).drop().exec();
   }
 }

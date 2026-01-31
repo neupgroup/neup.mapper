@@ -187,6 +187,7 @@ export class TableMigrator {
         const fs = await import('fs');
         const path = await import('path');
         const { adapter, config } = await this.getAdapter();
+
         const type = config?.type || 'mysql';
         const quote = (type === 'postgres' || type === 'sql') ? '"' : '`';
 
