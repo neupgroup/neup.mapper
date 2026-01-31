@@ -35,8 +35,9 @@ const indexFilePath = path.join(migrationDir, 'index.ts');
 
 if (command === 'init') {
     if (!fs.existsSync(migrationDir)) {
-        console.error('Migration directory does not exist: src/migration');
-        process.exit(1);
+        // Create the directory if it doesn't exist
+        fs.mkdirSync(migrationDir, { recursive: true });
+        console.log(`Created migration directory: ${migrationDir}`);
     }
 
     let completed: string[] = [];
