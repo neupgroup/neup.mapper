@@ -154,6 +154,78 @@ export class FluentSchemaCollectionBuilder {
   }
 }
 
+export class FluentApiRequestBuilder {
+  private _path: string = '';
+  private _headers: Record<string, string | string[]> = {};
+
+  constructor(private mapper: any, private connectionName: string, path: string = '') {
+    this._path = path;
+  }
+
+  path(p: string): this {
+    if (this._path === '') {
+      this._path = p;
+    } else {
+      if (!p.startsWith('/') && !this._path.endsWith('/')) {
+        this._path += '/';
+      }
+      this._path += p;
+    }
+    return this;
+  }
+
+  header(key: string | Record<string, string | string[]>, value?: string | string[]): this {
+    if (typeof key === 'object') {
+      Object.entries(key).forEach(([k, v]) => this.header(k, v));
+    } else if (value !== undefined) {
+      if (this._headers[key]) {
+        const existing = this._headers[key];
+        if (Array.isArray(existing)) {
+          if (Array.isArray(value)) {
+            existing.push(...value);
+          } else {
+            existing.push(value);
+          }
+        } else {
+          this._headers[key] = [existing, ...(Array.isArray(value) ? value : [value])];
+        }
+      } else {
+        this._headers[key] = value;
+      }
+    } else {
+      // Check for "Key: Value" string
+      if (key.includes(':')) {
+        const [k, ...v] = key.split(':');
+        this.header(k.trim(), v.join(':').trim());
+      }
+    }
+    return this;
+  }
+
+  headers(h: Record<string, string | string[]> | any[]): this {
+    if (Array.isArray(h)) {
+      h.forEach(item => this.header(item));
+    } else {
+      this.header(h);
+    }
+    return this;
+  }
+
+  async get() { return this.execute('GET'); }
+  async post(data?: any) { return this.execute('POST', data); }
+  async put(data?: any) { return this.execute('PUT', data); }
+  async patch(data?: any) { return this.execute('PATCH', data); }
+  async delete() { return this.execute('DELETE'); }
+
+  private async execute(method: string, data?: any) {
+    const adapter = this.mapper.getConnections().getAdapter(this.connectionName);
+    if (!adapter || typeof (adapter as any).request !== 'function') {
+      throw new Error(`Connection "${this.connectionName}" does not support custom requests.`);
+    }
+    return (adapter as any).request(method, this._path, data, this._headers);
+  }
+}
+
 export class FluentConnectionSelector {
   private mapper: any;
   private connectionName: string;
@@ -185,6 +257,39 @@ export class FluentConnectionSelector {
       schemaName,
       this.connectionName
     );
+  }
+
+  // API Request methods
+  path(path: string): FluentApiRequestBuilder {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName, path);
+  }
+
+  header(key: string | Record<string, string | string[]>, value?: string | string[]): FluentApiRequestBuilder {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).header(key, value);
+  }
+
+  headers(headers: Record<string, string> | any[]): FluentApiRequestBuilder {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).headers(headers);
+  }
+
+  get(): Promise<any> {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).get();
+  }
+
+  post(data?: any): Promise<any> {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).post(data);
+  }
+
+  put(data?: any): Promise<any> {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).put(data);
+  }
+
+  patch(data?: any): Promise<any> {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).patch(data);
+  }
+
+  delete(): Promise<any> {
+    return new FluentApiRequestBuilder(this.mapper, this.connectionName).delete();
   }
 }
 

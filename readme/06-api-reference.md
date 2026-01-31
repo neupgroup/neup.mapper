@@ -25,16 +25,20 @@
 - `StaticMapper.listConnections()` → List all connections
 
 ### **Query Builder Methods**
-- `table(name)` / `collection(name)` → Specify table/collection
-- `select()` / `find()` / `get()` → Start select query / execute
-- `where(field, value, operator?)` → Add where condition
+- `table(name)` / `collection(name)` → Specify table/collection for query building
+- `path(segment)` → Add path segment for API requests
+- `header(key, value)` / `headers(obj)` → Add custom headers for requests
+- `where(field, value, operator?)` → Add where condition for database queries
 - `orderBy(field, direction?)` → Add ordering
 - `limit(count)` → Limit results
 - `offset(count)` → Offset results
-- `get()` / `getOne()` → Execute query
-- `insert(data)` → Insert data (alias: `add`)
-- `update(data)` → Update data
-- `delete()` → Delete data
+- `get()` / `getOne()` → Execute query (GET request for API)
+- `post(data)` → Execute POST request with body
+- `put(data)` → Execute PUT request with body
+- `patch(data)` → Execute PATCH request with body
+- `delete()` → Execute delete operation or DELETE request
+- `insert(data)` → Alias for `add` / Database insertion
+- `add(data)` → Database insertion
 
 ### **Types**
 - `DbAdapter`, `QueryOptions`, `EnvDslConnections`, `NormalizedConnection`

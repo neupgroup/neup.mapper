@@ -1,4 +1,5 @@
 import { Connections, SchemaManager, schemas } from './index.js';
+import { autoAttachAdapter } from './adapters/index.js';
 
 export class Mapper {
   private connections: Connections;
@@ -99,6 +100,7 @@ export class Mapper {
   // Simplified API methods
   connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): this {
     this.connections.create(name, type).key(config);
+    autoAttachAdapter(this.connections, name, type, config);
     return this;
   }
 

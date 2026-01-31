@@ -191,6 +191,34 @@ const many = await User.where('email', '%@example.com', 'like').get()
 
 ---
 
+## Fluent API Requests
+
+For API connections, you can make fluent HTTP requests without defining a full schema.
+
+\`\`\`ts
+const conn = Mapper.connection({ type: 'api', url: 'https://api.example.com' });
+
+// Simple POST
+await conn.path("/users").post({ name: 'John Doe' });
+
+// Chained paths and headers
+const result = await conn.path("/v1")
+  .path("/users/123")
+  .header("Authorization", "Bearer my-token")
+  .headers({ "X-Custom": "value" })
+  .get();
+
+// Support for multiple values for the same header
+await conn.path("/notify")
+  .header("X-Tag", "news")
+  .header("X-Tag", "alerts")
+  .post({ body: "Hello" });
+\`\`\`
+
+Available methods: \`.get()\`, \`.post(data)\`, \`.put(data)\`, \`.patch(data)\`, \`.delete()\`.
+
+---
+
 ## Schema Configuration Details
 
 - \`primary\`: marks primary key; used for updates/deletes.
@@ -304,7 +332,7 @@ export function markdownToHtml(md: string): string {
     const line = lines[i]
     if (line.trim().startsWith('```')) {
       if (inCode) {
-        html.push(`<pre><code>${escapeHtml(codeBuf.join('\n'))}</code></pre>`) 
+        html.push(`<pre><code>${escapeHtml(codeBuf.join('\n'))}</code></pre>`)
         codeBuf = []
         inCode = false
       } else {
@@ -345,7 +373,7 @@ export function markdownToHtml(md: string): string {
   }
 
   if (inCode) {
-    html.push(`<pre><code>${codeBuf.map(s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n')}</code></pre>`) 
+    html.push(`<pre><code>${codeBuf.map(s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n')}</code></pre>`)
   }
   flushParagraph(paraBuf)
   return html.join('\n')

@@ -121,13 +121,24 @@ export class APIAdapter implements DbAdapter {
         const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
         try {
+            const headers = new Headers({
+                'Content-Type': 'application/json',
+                ...this.config.headers,
+            });
+
+            if (options.headers) {
+                Object.entries(options.headers).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        value.forEach(v => headers.append(key, v));
+                    } else if (value !== undefined) {
+                        headers.set(key, value as string);
+                    }
+                });
+            }
+
             const response = await fetch(url, {
                 ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.config.headers,
-                    ...options.headers,
-                },
+                headers,
                 signal: controller.signal,
             });
 
@@ -221,20 +232,17 @@ export class APIAdapter implements DbAdapter {
         await this.fetch(url, { method: 'DELETE' });
     }
 
-    /**
-     * Make a custom API request
-     */
     async request(
         method: string,
         endpoint: string,
         data?: any,
-        customHeaders?: Record<string, string>
+        customHeaders?: Record<string, string | string[]>
     ): Promise<any> {
         const url = `${this.config.baseUrl}${endpoint}`;
         return this.fetch(url, {
             method,
             body: data ? JSON.stringify(data) : undefined,
-            headers: customHeaders,
+            headers: customHeaders as any,
         });
     }
 }

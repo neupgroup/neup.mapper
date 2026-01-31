@@ -110,3 +110,34 @@ Mapper.schema('sessions')
 const users = await Mapper.get('users')        // From MySQL
 const sessions = await Mapper.get('sessions')    // From MongoDB
 ```
+
+### **Example 6: Fluent API Requests**
+```ts
+import Mapper from '@neupgroup/mapper'
+
+// Create a connection for an external API
+const api = Mapper.connection({ 
+  type: 'api', 
+  url: 'https://api.myapp.com' 
+})
+
+// Use path and HTTP methods fluently
+const profile = await api.path('/v1/me').get()
+
+// Send data with custom headers
+await api.path('/v1/posts')
+  .header('Authorization', 'Bearer my-token')
+  .header('X-Custom-Header', 'my-value')
+  .post({
+    title: 'New Post',
+    content: 'Hello World!'
+  })
+
+// Support for paths with multiple segments and multiple headers
+await api.path('/v1')
+  .path('/comments')
+  .header('X-Tag', 'news')
+  .header('X-Tag', 'alerts') // Appends to existing X-Tag
+  .get()
+```
+
