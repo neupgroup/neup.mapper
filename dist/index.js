@@ -401,7 +401,7 @@ export { StaticMapper } from './fluent-mapper.js';
 // Export the new config-based system
 export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config.js';
 // Export database adapters
-export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
+export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, SQLiteAdapter, createSQLiteAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors.js';
 export { Connector, mapper } from './connector.js';
 export { TableMigrator, ColumnBuilder } from './migrator.js';

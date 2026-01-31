@@ -1,4 +1,4 @@
-import { SchemaManager, ConnectionType } from './index.js';
+import { Connections, SchemaManager, ConnectionType } from './index.js';
 import { TableMigrator } from './migrator.js';
 export declare class FluentQueryBuilder {
     private mapper;
@@ -87,6 +87,7 @@ export declare class FluentMapper {
     private mapper;
     constructor(mapper: any);
     query(schemaName: string): FluentQueryBuilder;
+    table(name: string): FluentQueryBuilder;
     makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
     connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
@@ -96,6 +97,7 @@ export declare class FluentMapper {
     add(schemaName: string, data: Record<string, any>): Promise<any>;
     update(schemaName: string, filters: Record<string, any>, data: Record<string, any>): Promise<void>;
     delete(schemaName: string, filters: Record<string, any>): Promise<void>;
+    dropTable(name: string): Promise<void>;
 }
 export declare class StaticMapper {
     private static instance;
@@ -103,6 +105,7 @@ export declare class StaticMapper {
     static makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     static makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     static query(schemaName: string): FluentQueryBuilder;
+    static table(name: string): FluentQueryBuilder;
     static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     static useConnection(connectionName: string): FluentConnectionSelector;
     static schemas(name?: string): FluentSchemaWrapper | SchemaManagerWrapper;
@@ -111,6 +114,9 @@ export declare class StaticMapper {
     static add(schemaName: string, data: Record<string, any>): Promise<any>;
     static update(schemaName: string, filters: Record<string, any>, data: Record<string, any>): Promise<void>;
     static delete(schemaName: string, filters: Record<string, any>): Promise<void>;
+    static dropTable(name: string): Promise<void>;
+    static getConnections(): Connections;
+    static discover(): Promise<void>;
 }
 export declare const Mapper: typeof StaticMapper;
 export default Mapper;
@@ -130,9 +136,11 @@ export declare class FluentSchemaWrapper {
     limit(n: number): FluentQueryBuilder;
     offset(n: number): FluentQueryBuilder;
     insert(data: Record<string, any>): Promise<any>;
+    dropTable(): Promise<void>;
 }
 export declare class SchemaManagerWrapper {
     private manager;
     constructor(manager: SchemaManager);
     table(name: string): TableMigrator;
+    dropTable(name: string): Promise<void>;
 }

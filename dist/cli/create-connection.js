@@ -20,44 +20,53 @@ Example:
     process.exit(0);
 }
 const connectionName = args[0];
-const type = args[1] || 'api';
+const type = (args[1] || 'api').toLowerCase();
 if (!connectionName) {
     console.error('Error: Connection name is required.');
     console.log('Usage: npm run create-connection <connectionName> [type]');
     process.exit(1);
 }
-const connectionDir = path.resolve(process.cwd(), 'src/connection');
-if (!fs.existsSync(connectionDir))
-    fs.mkdirSync(connectionDir, { recursive: true });
-const filePath = path.join(connectionDir, `${connectionName}.ts`);
-let configTemplate = '';
-if (type === 'mysql') {
-    configTemplate = `
-    type: 'mysql',
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: '',
-    database: '${connectionName}'
-`;
+const configDir = path.resolve(process.cwd(), 'src/config');
+if (!fs.existsSync(configDir))
+    fs.mkdirSync(configDir, { recursive: true });
+const filePath = path.join(configDir, `${connectionName}.ts`);
+let template = {
+    name: connectionName,
+    type: type
+};
+if (type === 'mysql' || type === 'postgres') {
+    template = {
+        ...template,
+        host: '',
+        port: type === 'mysql' ? 3306 : 5432,
+        user: '',
+        password: '',
+        database: ''
+    };
 }
 else if (type === 'sqlite') {
-    configTemplate = `
-    type: 'sqlite',
-    filename: './${connectionName}.db'
-`;
+    template = {
+        ...template,
+        filename: ''
+    };
 }
-else {
-    configTemplate = `
-    type: '${type}',
-    // Add configuration here
-`;
+else if (type === 'mongodb') {
+    template = {
+        ...template,
+        url: ''
+    };
 }
-const fileContent = `import { ConnectionConfig } from '@neupgroup/mapper';
-
-export const config: ConnectionConfig = {
-${configTemplate}
-};
+else if (type === 'api') {
+    template = {
+        ...template,
+        baseUrl: '',
+        headers: {}
+    };
+}
+const fileContent = `
+export const connections = [
+    ${JSON.stringify(template, null, 4)}
+];
 `;
-fs.writeFileSync(filePath, fileContent.trim());
-console.log(`Created connection file: ${filePath} `);
+fs.writeFileSync(filePath, fileContent.trim() + '\n');
+console.log(`Created connection configuration: ${filePath}`);

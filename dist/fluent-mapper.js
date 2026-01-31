@@ -237,6 +237,9 @@ export class FluentMapper {
     query(schemaName) {
         return new FluentQueryBuilder(this.mapper, schemaName);
     }
+    table(name) {
+        return this.query(name);
+    }
     makeConnection(name, type, config) {
         return new FluentConnectionBuilder(this.mapper, name, type, config);
     }
@@ -281,6 +284,9 @@ export class FluentMapper {
     async delete(schemaName, filters) {
         return this.mapper.delete(schemaName, filters);
     }
+    async dropTable(name) {
+        return new TableMigrator(name).drop().exec();
+    }
 }
 // Static API class that provides the fluent interface
 export class StaticMapper {
@@ -299,6 +305,9 @@ export class StaticMapper {
     }
     static query(schemaName) {
         return StaticMapper.getFluentMapper().query(schemaName);
+    }
+    static table(name) {
+        return StaticMapper.query(name);
     }
     // New API
     static connection(connectionOrConfig) {
@@ -329,6 +338,16 @@ export class StaticMapper {
     }
     static async delete(schemaName, filters) {
         return StaticMapper.getFluentMapper().delete(schemaName, filters);
+    }
+    static async dropTable(name) {
+        return StaticMapper.getFluentMapper().dropTable(name);
+    }
+    static getConnections() {
+        return StaticMapper.getFluentMapper().mapper.getConnections();
+    }
+    static async discover() {
+        const { discover } = await import('./discovery.js');
+        return discover();
     }
 }
 // Export a default instance for convenience
@@ -418,6 +437,13 @@ export class FluentSchemaWrapper {
         }, this.name);
         return q.insert(data);
     }
+    async dropTable() {
+        const migrator = new TableMigrator(this.name);
+        if (this.connectionName) {
+            migrator.useConnection(this.connectionName);
+        }
+        return migrator.drop().exec();
+    }
 }
 // Helper to access parseDescriptorStructure from index.ts if not exported?
 // It is NOT exported. I need to export it or duplicate logic.
@@ -430,5 +456,8 @@ export class SchemaManagerWrapper {
     table(name) {
         // This allows Mapper.schemas().table('name') to return a migrator
         return new TableMigrator(name);
+    }
+    async dropTable(name) {
+        return new TableMigrator(name).drop().exec();
     }
 }
