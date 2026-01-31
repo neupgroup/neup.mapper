@@ -557,3 +557,5 @@ export {
 } from './errors.js';
 
 export { Connector, mapper } from './connector.js';
+export { TableMigrator, ColumnBuilder } from './migrator.js';
+

@@ -1,5 +1,6 @@
 import { Connections, SchemaManager, type SchemaDef } from './index.js';
 import { createMapper } from './mapper.js';
+import { TableMigrator } from './migrator.js';
 
 export class FluentQueryBuilder {
   private mapper: any;
@@ -395,10 +396,15 @@ export class StaticMapper {
     return StaticMapper.connection(connectionName);
   }
 
-  static schemas(name: string): FluentSchemaWrapper {
-    return new FluentSchemaWrapper(
-      (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager(), // Access underlying manager
-      name
+  static schemas(name?: string): FluentSchemaWrapper | SchemaManagerWrapper {
+    if (name) {
+      return new FluentSchemaWrapper(
+        (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager(),
+        name
+      );
+    }
+    return new SchemaManagerWrapper(
+      (StaticMapper.getFluentMapper() as any).mapper.getSchemaManager()
     );
   }
 
@@ -521,3 +527,12 @@ export class FluentSchemaWrapper {
 // It is NOT exported. I need to export it or duplicate logic.
 // I'll export it from index.ts.
 import { parseDescriptorStructure } from './index.js'; // fixed import at bottom
+
+export class SchemaManagerWrapper {
+  constructor(private manager: SchemaManager) { }
+
+  table(name: string): TableMigrator {
+    // This allows Mapper.schemas().table('name') to return a migrator
+    return new TableMigrator(name);
+  }
+}

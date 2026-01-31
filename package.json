@@ -1,17 +1,23 @@
 {
   "name": "@neupgroup/mapper",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Neup.Mapper core library for schema and mapping utilities",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "create-migration": "dist/cli/create-migration.js",
+    "create-connection": "dist/cli/create-connection.js"
+  },
   "files": [
     "dist"
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p ./tsconfig.json"
+    "build": "tsc -p ./tsconfig.json",
+    "create-migration": "npx tsx src/cli/create-migration.ts",
+    "create-connection": "npx tsx src/cli/create-connection.ts"
   },
   "publishConfig": {
     "access": "public"

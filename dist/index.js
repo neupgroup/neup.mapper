@@ -404,3 +404,4 @@ export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, c
 export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors.js';
 export { Connector, mapper } from './connector.js';
+export { TableMigrator, ColumnBuilder } from './migrator.js';

@@ -1,4 +1,5 @@
 import { SchemaManager } from './index.js';
+import { TableMigrator } from './migrator.js';
 export declare class FluentQueryBuilder {
     private mapper;
     private schemaName;
@@ -104,7 +105,7 @@ export declare class StaticMapper {
     static query(schemaName: string): FluentQueryBuilder;
     static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     static useConnection(connectionName: string): FluentConnectionSelector;
-    static schemas(name: string): FluentSchemaWrapper;
+    static schemas(name?: string): FluentSchemaWrapper | SchemaManagerWrapper;
     static get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     static getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     static add(schemaName: string, data: Record<string, any>): Promise<any>;
@@ -129,4 +130,9 @@ export declare class FluentSchemaWrapper {
     limit(n: number): FluentQueryBuilder;
     offset(n: number): FluentQueryBuilder;
     insert(data: Record<string, any>): Promise<any>;
+}
+export declare class SchemaManagerWrapper {
+    private manager;
+    constructor(manager: SchemaManager);
+    table(name: string): TableMigrator;
 }
