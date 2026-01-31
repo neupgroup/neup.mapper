@@ -440,6 +440,11 @@ export class StaticMapper {
   static getConnections(): Connections {
     return (StaticMapper.getFluentMapper() as any).mapper.getConnections();
   }
+
+  static async discover(): Promise<void> {
+    const { discover } = await import('./discovery.js');
+    return discover();
+  }
 }
 
 

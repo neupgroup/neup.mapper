@@ -16,6 +16,17 @@ mongodb://...    → MongoDB
 firestore://...  → Firestore
 ```
 
+## 🏗️ Project Discovery Mode
+If you follow the [Standard Project Structure](./02-getting-started.md#🛠️-typical-project-structure), you can initialize everything with a single call:
+
+```ts
+import Mapper from '@neupgroup/mapper'
+
+// Scans src/config/*.ts for connections
+// Scans src/schemas/*.ts for schema definitions
+await Mapper.discover()
+```
+
 ## Manual Configuration (Optional)
 
 ```ts

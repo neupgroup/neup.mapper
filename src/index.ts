@@ -533,6 +533,8 @@ export {
   createMongoDBAdapter,
   APIAdapter,
   createAPIAdapter,
+  SQLiteAdapter,
+  createSQLiteAdapter,
   createAdapter,
   createAdapterFromUrl,
   autoAttachAdapter
@@ -542,6 +544,7 @@ export type {
   PostgreSQLConfig,
   MongoDBConfig,
   APIAdapterConfig,
+  SQLiteConfig,
   AdapterConfig
 } from './adapters/index.js';
 

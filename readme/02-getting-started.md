@@ -96,3 +96,36 @@ const sqliteData = await Mapper.connection({
   .table('logs')
   .get()
 ```
+
+### **Option 4: Project Discovery Mode (Recommended)**
+**Automatically discover connections and schemas from your standard project structure:**
+
+1. Organize your project:
+   - `src/config/*.ts` - Connection arrays
+   - `src/schemas/*.ts` - Table definitions
+
+2. Just discover and go:
+```ts
+import Mapper from '@neupgroup/mapper'
+
+// Scans src/config and src/schemas and registers everything
+await Mapper.discover()
+
+// Start querying
+const users = await Mapper.get('users')
+```
+
+---
+
+## 🛠️ Typical Project Structure
+For the best experience (and to use the CLI tools), follow this structure:
+
+```text
+your-project/
+├── src/
+│   ├── config/      # Connection configurations
+│   ├── schemas/     # Table/Collection definitions (auto-generated)
+│   ├── migration/   # Database migration files
+│   └── index.ts     # Your app entry point
+└── package.json
+```
