@@ -107,10 +107,10 @@ export class StaticMapper {
     return StaticMapper.instance;
   }
 
-  static base(target: string) { return StaticMapper.getFluentMapper().base(target); }
-  static query(target: string) { return StaticMapper.getFluentMapper().query(target); }
-  static schema(name: string) { return StaticMapper.getFluentMapper().schema(name); }
-  static raw(sql: string) { return StaticMapper.getFluentMapper().raw(sql); }
+  static base(target: string): BaseDispatcher { return StaticMapper.getFluentMapper().base(target); }
+  static query(target: string): BaseDispatcher { return StaticMapper.getFluentMapper().query(target); }
+  static schema(name: string): SchemaDispatcher { return StaticMapper.getFluentMapper().schema(name); }
+  static raw(sql: string): RawBuilder { return StaticMapper.getFluentMapper().raw(sql); }
 
   static connection(arg: any) { return StaticMapper.getFluentMapper().connection(arg); }
   static makeConnection(n: string, t: ConnectionType, c: any) { return StaticMapper.getFluentMapper().makeConnection(n, t, c); }
