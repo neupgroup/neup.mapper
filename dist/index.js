@@ -396,8 +396,7 @@ export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs.js
 // Export the simplified Mapper and default instance
 export { Mapper, createMapper } from './mapper.js';
 export { default } from './mapper.js';
-// Export the new fluent/static API
-export { StaticMapper, RawQueryBuilder, BaseQueryBuilder } from './fluent-mapper.js';
+export { StaticMapper, RawBuilder, BaseDispatcher } from './fluent-mapper.js';
 // Export the new config-based system
 export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config.js';
 // Export database adapters

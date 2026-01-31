@@ -55,18 +55,14 @@ export async function discover() {
                 if (schemaDef && schemaDef.fields) {
                     const connectionName = schemaDef.usesConnection || 'default';
 
-                    StaticMapper.connection(connectionName)
-                        .schema(schemaName)
-                        .collection(schemaDef.collectionName || schemaName)
+                    StaticMapper.schema(schemaName)
+                        .create()
                         .structure(schemaDef.fields);
 
                     // Apply options if present
+                    // Apply options if present
                     if (schemaDef.insertableFields || schemaDef.updatableFields) {
-                        const manager = (StaticMapper as any).getFluentMapper().mapper.getSchemaManager();
-                        const schema = manager.create(schemaName); // This might throw if exists, should use update
-                        // ... existing StaticMapper already handles this in discovery pattern? 
-                        // Actually StaticMapper.schemas(schemaName) works.
-                        const wrapper: any = StaticMapper.schemas(schemaName);
+                        const wrapper: any = (StaticMapper as any).getFluentMapper().mapper.getSchemaManager().create(schemaName);
                         if (schemaDef.insertableFields) wrapper.insertableFields = schemaDef.insertableFields;
                         if (schemaDef.updatableFields) wrapper.updatableFields = schemaDef.updatableFields;
                         if (schemaDef.massUpdateable !== undefined) wrapper.massEditAllowed = schemaDef.massUpdateable;

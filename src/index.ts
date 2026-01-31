@@ -495,16 +495,13 @@ export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs.js
 export { Mapper, createMapper } from './mapper.js';
 export { default } from './mapper.js';
 
-// Export the new fluent/static API
 export {
   StaticMapper,
-  RawQueryBuilder,
-  BaseQueryBuilder
+  RawBuilder,
+  BaseDispatcher
 } from './fluent-mapper.js';
 export type {
-  FluentQueryBuilder,
   FluentConnectionBuilder,
-  FluentSchemaBuilder,
   FluentConnectionSelector,
   FluentMapper
 } from './fluent-mapper.js';

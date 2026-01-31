@@ -40,11 +40,11 @@ export declare class Connector {
      * Define the table or collection to operate on.
      * This registers the connection (if not already) and prepares a query.
      */
-    table(tableName: string): import("./fluent-mapper.js").FluentQueryBuilder;
+    table(tableName: string): import("./fluent-mapper.js").BaseDispatcher;
     /**
      * Alias for table() for API endpoints (subpath).
      */
-    subpath(path: string): import("./fluent-mapper.js").FluentQueryBuilder;
+    subpath(path: string): import("./fluent-mapper.js").BaseDispatcher;
     /**
      * Finalizes the connection registration and returns a query object.
      */
