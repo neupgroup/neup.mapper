@@ -1,4 +1,5 @@
 import { Connections, SchemaManager } from './index.js';
+import { autoAttachAdapter } from './adapters/index.js';
 export class Mapper {
     constructor() {
         this.configured = false;
@@ -57,6 +58,8 @@ export class Mapper {
             return 'mongodb';
         if (url.includes('firestore'))
             return 'firestore';
+        if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite'))
+            return 'sqlite';
         return 'api';
     }
     applyConfig(config) {
@@ -86,6 +89,7 @@ export class Mapper {
     // Simplified API methods
     connect(name, type, config) {
         this.connections.create(name, type).key(config);
+        autoAttachAdapter(this.connections, name, type, config);
         return this;
     }
     schema(name) {

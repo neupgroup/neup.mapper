@@ -48,6 +48,22 @@ export declare class FluentSchemaCollectionBuilder {
         [key: string]: any;
     }>): FluentMapper;
 }
+export declare class FluentApiRequestBuilder {
+    private mapper;
+    private connectionName;
+    private _path;
+    private _headers;
+    constructor(mapper: any, connectionName: string, path?: string);
+    path(p: string): this;
+    header(key: string | Record<string, string | string[]>, value?: string | string[]): this;
+    headers(h: Record<string, string | string[]> | any[]): this;
+    get(): Promise<any>;
+    post(data?: any): Promise<any>;
+    put(data?: any): Promise<any>;
+    patch(data?: any): Promise<any>;
+    delete(): Promise<any>;
+    private execute;
+}
 export declare class FluentConnectionSelector {
     private mapper;
     private connectionName;
@@ -57,15 +73,23 @@ export declare class FluentConnectionSelector {
     table(tableName: string): FluentQueryBuilder;
     collection(collectionName: string): FluentQueryBuilder;
     schemas(schemaName: string): FluentSchemaWrapper;
+    path(path: string): FluentApiRequestBuilder;
+    header(key: string | Record<string, string | string[]>, value?: string | string[]): FluentApiRequestBuilder;
+    headers(headers: Record<string, string> | any[]): FluentApiRequestBuilder;
+    get(): Promise<any>;
+    post(data?: any): Promise<any>;
+    put(data?: any): Promise<any>;
+    patch(data?: any): Promise<any>;
+    delete(): Promise<any>;
 }
 export declare class FluentMapper {
     private mapper;
     constructor(mapper: any);
     query(schemaName: string): FluentQueryBuilder;
-    makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
+    makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
     connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
-    makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
+    makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     add(schemaName: string, data: Record<string, any>): Promise<any>;
@@ -75,8 +99,8 @@ export declare class FluentMapper {
 export declare class StaticMapper {
     private static instance;
     private static getFluentMapper;
-    static makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
-    static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): FluentConnectionBuilder;
+    static makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
+    static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
     static query(schemaName: string): FluentQueryBuilder;
     static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     static useConnection(connectionName: string): FluentConnectionSelector;

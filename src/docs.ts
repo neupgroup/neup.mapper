@@ -66,11 +66,17 @@ connections = [
     baseUrl: "https://api.example.com"
     token: "abc123"
   }
+
+  sqlite_local: {
+    type: sqlite
+    filename: "./data.db"
+  }
 ]
 \`\`\`
 
 Notes:
 - \`type\` (or \`dbType\`) defaults to \`api\` if omitted.
+- For SQLite, use \`filename\` to specify the path to the database file.
 - Values can be unquoted or quoted; comments using \`#\` are ignored.
 
 Parse and normalize:

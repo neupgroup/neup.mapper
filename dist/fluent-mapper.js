@@ -109,6 +109,80 @@ export class FluentSchemaCollectionBuilder {
         return new FluentMapper(this.mapper);
     }
 }
+export class FluentApiRequestBuilder {
+    constructor(mapper, connectionName, path = '') {
+        this.mapper = mapper;
+        this.connectionName = connectionName;
+        this._path = '';
+        this._headers = {};
+        this._path = path;
+    }
+    path(p) {
+        if (this._path === '') {
+            this._path = p;
+        }
+        else {
+            if (!p.startsWith('/') && !this._path.endsWith('/')) {
+                this._path += '/';
+            }
+            this._path += p;
+        }
+        return this;
+    }
+    header(key, value) {
+        if (typeof key === 'object') {
+            Object.entries(key).forEach(([k, v]) => this.header(k, v));
+        }
+        else if (value !== undefined) {
+            if (this._headers[key]) {
+                const existing = this._headers[key];
+                if (Array.isArray(existing)) {
+                    if (Array.isArray(value)) {
+                        existing.push(...value);
+                    }
+                    else {
+                        existing.push(value);
+                    }
+                }
+                else {
+                    this._headers[key] = [existing, ...(Array.isArray(value) ? value : [value])];
+                }
+            }
+            else {
+                this._headers[key] = value;
+            }
+        }
+        else {
+            // Check for "Key: Value" string
+            if (key.includes(':')) {
+                const [k, ...v] = key.split(':');
+                this.header(k.trim(), v.join(':').trim());
+            }
+        }
+        return this;
+    }
+    headers(h) {
+        if (Array.isArray(h)) {
+            h.forEach(item => this.header(item));
+        }
+        else {
+            this.header(h);
+        }
+        return this;
+    }
+    async get() { return this.execute('GET'); }
+    async post(data) { return this.execute('POST', data); }
+    async put(data) { return this.execute('PUT', data); }
+    async patch(data) { return this.execute('PATCH', data); }
+    async delete() { return this.execute('DELETE'); }
+    async execute(method, data) {
+        const adapter = this.mapper.getConnections().getAdapter(this.connectionName);
+        if (!adapter || typeof adapter.request !== 'function') {
+            throw new Error(`Connection "${this.connectionName}" does not support custom requests.`);
+        }
+        return adapter.request(method, this._path, data, this._headers);
+    }
+}
 export class FluentConnectionSelector {
     constructor(mapper, connectionName) {
         this.mapper = mapper;
@@ -128,6 +202,31 @@ export class FluentConnectionSelector {
     }
     schemas(schemaName) {
         return new FluentSchemaWrapper(this.mapper.getSchemaManager(), schemaName, this.connectionName);
+    }
+    // API Request methods
+    path(path) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName, path);
+    }
+    header(key, value) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).header(key, value);
+    }
+    headers(headers) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).headers(headers);
+    }
+    get() {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).get();
+    }
+    post(data) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).post(data);
+    }
+    put(data) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).put(data);
+    }
+    patch(data) {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).patch(data);
+    }
+    delete() {
+        return new FluentApiRequestBuilder(this.mapper, this.connectionName).delete();
     }
 }
 export class FluentMapper {

@@ -1,6 +1,6 @@
 import type { DbAdapter, QueryOptions } from './orm/index.js';
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
-export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api';
+export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite';
 export interface Field {
     name: string;
     type: ColumnType;

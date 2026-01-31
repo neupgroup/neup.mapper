@@ -65,11 +65,17 @@ connections = [
     baseUrl: "https://api.example.com"
     token: "abc123"
   }
+
+  sqlite_local: {
+    type: sqlite
+    filename: "./data.db"
+  }
 ]
 \`\`\`
 
 Notes:
 - \`type\` (or \`dbType\`) defaults to \`api\` if omitted.
+- For SQLite, use \`filename\` to specify the path to the database file.
 - Values can be unquoted or quoted; comments using \`#\` are ignored.
 
 Parse and normalize:
@@ -187,6 +193,34 @@ await User.where(['id', 'u_123']).deleteOne()
 const one = await User.where(['id', 'u_123']).getOne()
 const many = await User.where('email', '%@example.com', 'like').get()
 \`\`\`
+
+---
+
+## Fluent API Requests
+
+For API connections, you can make fluent HTTP requests without defining a full schema.
+
+\`\`\`ts
+const conn = Mapper.connection({ type: 'api', url: 'https://api.example.com' });
+
+// Simple POST
+await conn.path("/users").post({ name: 'John Doe' });
+
+// Chained paths and headers
+const result = await conn.path("/v1")
+  .path("/users/123")
+  .header("Authorization", "Bearer my-token")
+  .headers({ "X-Custom": "value" })
+  .get();
+
+// Support for multiple values for the same header
+await conn.path("/notify")
+  .header("X-Tag", "news")
+  .header("X-Tag", "alerts")
+  .post({ body: "Hello" });
+\`\`\`
+
+Available methods: \`.get()\`, \`.post(data)\`, \`.put(data)\`, \`.patch(data)\`, \`.delete()\`.
 
 ---
 

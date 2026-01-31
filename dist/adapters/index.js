@@ -3,10 +3,12 @@ export { MySQLAdapter, createMySQLAdapter } from './mysql-adapter.js';
 export { PostgreSQLAdapter, createPostgreSQLAdapter } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter } from './mongodb-adapter.js';
 export { APIAdapter, createAPIAdapter } from './api-adapter.js';
+export { SQLiteAdapter, createSQLiteAdapter } from './sqlite-adapter.js';
 import { createMySQLAdapter } from './mysql-adapter.js';
 import { createPostgreSQLAdapter } from './postgres-adapter.js';
 import { createMongoDBAdapter } from './mongodb-adapter.js';
 import { createAPIAdapter } from './api-adapter.js';
+import { createSQLiteAdapter } from './sqlite-adapter.js';
 /**
  * Auto-create adapter based on connection type
  */
@@ -24,6 +26,9 @@ export function createAdapter(adapterConfig) {
         case 'api':
         case 'rest':
             return createAPIAdapter(adapterConfig.config);
+        case 'sqlite':
+        case 'sqlite3':
+            return createSQLiteAdapter(adapterConfig.config);
         default:
             throw new Error(`Unknown adapter type: ${adapterConfig.type}`);
     }
@@ -32,6 +37,10 @@ export function createAdapter(adapterConfig) {
  * Create adapter from connection URL
  */
 export function createAdapterFromUrl(url) {
+    // Handle shorthand SQLite local files
+    if (url.endsWith('.db') || url.endsWith('.sqlite')) {
+        return createSQLiteAdapter({ filename: url });
+    }
     const urlObj = new URL(url);
     const protocol = urlObj.protocol.replace(':', '');
     switch (protocol) {
@@ -61,6 +70,11 @@ export function createAdapterFromUrl(url) {
         case 'https':
             return createAPIAdapter({
                 baseUrl: url,
+            });
+        case 'sqlite':
+        case 'sqlite3':
+            return createSQLiteAdapter({
+                filename: url.replace('sqlite://', '').replace('sqlite3://', ''),
             });
         default:
             throw new Error(`Unsupported protocol: ${protocol}`);

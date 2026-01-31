@@ -12,7 +12,7 @@ export declare class Mapper {
     private applyConfig;
     private applyDefaultConfig;
     private createSchema;
-    connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): this;
+    connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): this;
     schema(name: string): ReturnType<SchemaManager['create']>;
     use(schemaName: string): ReturnType<SchemaManager['use']>;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;

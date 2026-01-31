@@ -85,7 +85,14 @@ const tempData = await Mapper.connection({
   url: 'mongodb://localhost:27017',
   database: 'temp'
 })
-  .collection('cache')
   .where('expired', false)
+  .get()
+
+// SQLite connection
+const sqliteData = await Mapper.connection({
+  type: 'sqlite',
+  filename: './local_store.db'
+})
+  .table('logs')
   .get()
 ```
