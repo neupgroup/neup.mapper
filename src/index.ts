@@ -496,12 +496,15 @@ export { Mapper, createMapper } from './mapper.js';
 export { default } from './mapper.js';
 
 // Export the new fluent/static API
-export { StaticMapper } from './fluent-mapper.js';
+export {
+  StaticMapper,
+  RawQueryBuilder,
+  BaseQueryBuilder
+} from './fluent-mapper.js';
 export type {
   FluentQueryBuilder,
   FluentConnectionBuilder,
   FluentSchemaBuilder,
-  FluentSchemaCollectionBuilder,
   FluentConnectionSelector,
   FluentMapper
 } from './fluent-mapper.js';

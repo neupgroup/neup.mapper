@@ -1,30 +1,13 @@
-import { Connections, SchemaManager, type SchemaDef, ConnectionType } from './index.js';
+import { Connections, SchemaManager, ConnectionType } from './index.js';
 import { TableMigrator } from './migrator.js';
 export declare class FluentQueryBuilder {
     private mapper;
     private schemaName;
     private query;
-    private _migrator?;
     constructor(mapper: any, schemaName: string, connectionName?: string);
-    getDef(): SchemaDef;
-    set fields(config: any);
-    set insertableFields(val: string[]);
-    set updatableFields(val: string[]);
-    set deleteType(val: 'softDelete' | 'hardDelete');
-    set massDeleteAllowed(val: boolean);
-    set massEditAllowed(val: boolean);
-    structure(config: any): this;
-    collection(collectionName: string): this;
-    get migrator(): TableMigrator;
-    useConnection(name: string): this;
-    addColumn(name: string): import("./migrator.js").ColumnBuilder;
-    selectColumn(name: string): import("./migrator.js").ColumnBuilder;
-    dropColumn(name: string): this;
-    drop(): this;
-    exec(): Promise<void>;
-    dropTable(): Promise<void>;
     where(field: string, value: any, operator?: string): this;
     whereComplex(raw: string): this;
+    whereRaw(raw: string): this;
     limit(n: number): this;
     offset(n: number): this;
     to(update: Record<string, any>): this;
@@ -33,10 +16,32 @@ export declare class FluentQueryBuilder {
     getOne(): Promise<Record<string, any> | null>;
     add(data: Record<string, any>): Promise<any>;
     insert(data: Record<string, any>): Promise<any>;
-    update(): Promise<void>;
+    update(data?: Record<string, any>): Promise<void>;
     delete(): Promise<void>;
     deleteOne(): Promise<void>;
-    updateOne(): Promise<void>;
+    updateOne(data?: Record<string, any>): Promise<void>;
+}
+export declare class FluentSchemaBuilder {
+    private mapper;
+    private schemaName;
+    private _migrator?;
+    constructor(mapper: any, schemaName: string, connectionName?: string);
+    private getDef;
+    set fields(config: any);
+    structure(config: any): this;
+    collection(collectionName: string): this;
+    set insertableFields(val: string[]);
+    set updatableFields(val: string[]);
+    set deleteType(val: 'softDelete' | 'hardDelete');
+    set massDeleteAllowed(val: boolean);
+    set massEditAllowed(val: boolean);
+    get migrator(): TableMigrator;
+    useConnection(name: string): this;
+    addColumn(name: string): import("./migrator.js").ColumnBuilder;
+    selectColumn(name: string): import("./migrator.js").ColumnBuilder;
+    dropColumn(name: string): this;
+    drop(): this;
+    exec(): Promise<void>;
 }
 export declare class FluentConnectionBuilder {
     private mapper;
@@ -48,24 +53,33 @@ export declare class FluentConnectionBuilder {
     query(schemaName: string): FluentQueryBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
 }
-export declare class FluentSchemaBuilder {
+export declare class RawQueryBuilder {
     private mapper;
-    private schemaName;
-    private connectionName;
-    constructor(mapper: any, schemaName: string, connectionName: string);
-    collection(collectionName: string): FluentSchemaCollectionBuilder;
+    private sql;
+    private _bindings;
+    constructor(mapper: any, sql: string);
+    bind(bindings: any[] | any): this;
+    run(): Promise<any>;
 }
-export declare class FluentSchemaCollectionBuilder {
+export declare class BaseQueryBuilder {
     private mapper;
-    private schemaName;
-    private connectionName;
-    private collectionName;
-    constructor(mapper: any, schemaName: string, connectionName: string, collectionName: string);
-    structure(structure: Record<string, string> | Array<{
-        name: string;
-        type: string;
-        [key: string]: any;
-    }>): FluentMapper;
+    private target;
+    private queryBuilder;
+    private _select;
+    private _insertData?;
+    private _updateData?;
+    private _action;
+    constructor(mapper: any, target: string);
+    select(fields: string[]): this;
+    where(field: string, value: any, operator?: string): this;
+    whereRaw(raw: string): this;
+    limit(n: number): this;
+    offset(n: number): this;
+    insert(data: any): this;
+    update(data: any): this;
+    get(): Promise<any>;
+    getOne(): Promise<any>;
+    run(): Promise<any>;
 }
 export declare class FluentApiRequestBuilder {
     private mapper;
@@ -87,8 +101,8 @@ export declare class FluentConnectionSelector {
     private mapper;
     private connectionName;
     constructor(mapper: any, connectionName: string);
-    schema(schemaName: string): FluentQueryBuilder;
-    schemas(schemaName: string): FluentQueryBuilder;
+    schema(schemaName: string): FluentSchemaBuilder;
+    schemas(schemaName: string): FluentSchemaBuilder;
     query(schemaName: string): FluentQueryBuilder;
     table(tableName: string): FluentQueryBuilder;
     collection(collectionName: string): FluentQueryBuilder;
@@ -105,8 +119,10 @@ export declare class FluentMapper {
     private mapper;
     constructor(mapper: any);
     query(schemaName: string): FluentQueryBuilder;
-    schema(name: string): FluentQueryBuilder;
+    schema(name: string): FluentSchemaBuilder;
     table(name: string): FluentQueryBuilder;
+    raw(sql: string): RawQueryBuilder;
+    base(target: string): BaseQueryBuilder;
     makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
     connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
@@ -124,9 +140,11 @@ export declare class StaticMapper {
     static makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     static makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     static query(schemaName: string): FluentQueryBuilder;
-    static schema(name: string): FluentQueryBuilder;
+    static schema(name: string): FluentSchemaBuilder;
     static schema(): SchemaManagerWrapper;
     static table(name: string): FluentQueryBuilder;
+    static raw(sql: string): RawQueryBuilder;
+    static base(target: string): BaseQueryBuilder;
     static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     static useConnection(connectionName: string): FluentConnectionSelector;
     static schemas(name?: string): any;

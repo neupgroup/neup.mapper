@@ -104,7 +104,7 @@ For database connections (mysql, postgres, mongodb), the connection selector als
 const db = Mapper.connection('mysql_db');
 
 // Access a schema and perform standard query
-const activeUsers = await db.schema('users')
+const activeUsers = await db.query('users')
   .where('status', 'active')
   .get();
 

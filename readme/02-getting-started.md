@@ -9,7 +9,8 @@
 import Mapper from '@neupgroup/mapper'
 
 // 1. Define a schema (Automatically registered in memory!)
-const users = Mapper.schema('users')
+// 1. Define a schema (Automatically registered in memory!)
+Mapper.schema('users')
   .collection('users')
   .structure({
     id: ['int', 'auto-increment'],
@@ -18,11 +19,11 @@ const users = Mapper.schema('users')
   })
 
 // 2. Use immediately
-await users.add({ name: 'Alice', email: 'alice@example.com' })
-const allUsers = await users.limit(10).get()
-const alice = await users.where('email', 'alice@example.com').getOne()
-await users.where('email', 'alice@example.com').to({ name: 'Alice Cooper' }).update()
-await users.where('email', 'alice@example.com').delete()
+await Mapper.add('users', { name: 'Alice', email: 'alice@example.com' })
+const allUsers = await Mapper.query('users').limit(10).get()
+const alice = await Mapper.query('users').where('email', 'alice@example.com').getOne()
+await Mapper.query('users').where('email', 'alice@example.com').to({ name: 'Alice Cooper' }).update()
+await Mapper.query('users').where('email', 'alice@example.com').delete()
 ```
 
 ### **Option 2: Configuration-Based Approach**
@@ -75,7 +76,7 @@ Mapper.makeConnection('mydb', 'mysql', {
 
 // Use connections with method chaining
 const users = await Mapper.connection('mydb')
-  .schema('users')
+  .query('users')
   .where('active', true)
   .get()
 
@@ -85,7 +86,7 @@ const temp = Mapper.connection({
   url: 'mongodb://localhost:27017'
 })
 
-const data = await temp.schema('prospects')
+const data = await temp.query('prospects')
   .where('expired', false)
   .get()
 
@@ -94,7 +95,7 @@ const logs = await Mapper.connection({
   type: 'sqlite',
   filename: './local_store.db'
 })
-  .schema('logs')
+  .query('logs')
   .get()
 ```
 
@@ -113,7 +114,7 @@ import Mapper from '@neupgroup/mapper'
 await Mapper.discover()
 
 // Start querying
-const users = await Mapper.schema('users').limit(10).get()
+const users = await Mapper.query('users').limit(10).get()
 ```
 
 ---

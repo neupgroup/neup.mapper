@@ -46,7 +46,7 @@ import { Mapper, TableMigrator } from '@neupgroup/mapper';
 export const usesConnection = 'default';
 
 export async function up() {
-    const schema = Mapper.schema().table('${tableName}');
+    const schema = Mapper.schema('${tableName}');
     schema.useConnection(usesConnection);
 
     /**
@@ -71,9 +71,9 @@ export async function down() {
      * DROP SCHEMA (Immediate action)
      * This will drop the schema from the DB and delete the local schema file.
      */
-    const schema = Mapper.schema().table('${tableName}');
+    const schema = Mapper.schema('${tableName}');
     schema.useConnection(usesConnection);
-    await schema.dropTable().exec();
+    await schema.drop().exec();
 }
 `;
 fs.writeFileSync(filePath, fileContent.trim());

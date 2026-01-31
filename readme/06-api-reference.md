@@ -24,9 +24,15 @@
 - `StaticMapper.getConnection(name)` → Get connection by name
 - `StaticMapper.listConnections()` → List all connections
 
-### **Query Builder Methods**
-- `schema(name)` → Universal query/migration builder (entry point)
-- `table(name)` / `collection(name)` → Aliases for `schema(name)`
+### **Schema Builder Methods (DDL)**
+- `schema(name)` → Define/Migrate schema structure
+- `structure(config)` → Define schema fields
+- `collection(name)` → Set underlying collection/table name
+- `exec()` → Execute deferred schema changes
+
+### **Query Builder Methods (DML)**
+- `query(name)` → Entry point for data operations
+- `table(name)` / `collection(name)` → Aliases for `query(name)`
 - `path(segment)` → Add path segment for API requests
 - `header(key, value)` / `headers(obj)` → Add custom headers for requests
 - `where(field, value, operator?)` → Add where condition for database queries

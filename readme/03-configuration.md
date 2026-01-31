@@ -150,7 +150,7 @@ await mapper('tenant_db')
     password: dbPass,
     database: dbName
   })
-  .schema('users')
+  .query('users')
   .add({ name: 'New User', email: 'user@example.com' });
 
 // Example 2: Dynamic API Endpoint
@@ -160,7 +160,7 @@ const api = mapper('my_api')
   .type('api')
   .basePath('https://api.example.com')
   .config({ headers: { Authorization: apiToken } })
-  .schema('prospects'); // treats 'prospects' as the collection/resource
+  .query('prospects'); // treats 'prospects' as the collection/resource
 
 // Perform operations
 await api.add({ name: 'Lead 1' });

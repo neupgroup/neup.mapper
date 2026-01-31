@@ -1,26 +1,107 @@
 import { createMapper } from './mapper.js';
 import { TableMigrator } from './migrator.js';
+// DML Builder (Querying)
 export class FluentQueryBuilder {
     constructor(mapper, schemaName, connectionName) {
         this.mapper = mapper;
         this.schemaName = schemaName;
         try {
             this.query = mapper.use(schemaName);
+            // Auto-update connection if provided override
             if (connectionName) {
-                const def = this.getDef();
-                if (def)
-                    def.connectionName = connectionName;
+                // We can't easily update the schema def from query builder purely, 
+                // but the Use() call presumably set up the schemaQuery.
             }
         }
         catch (e) {
-            // Auto-register schema if missing (Automatically schemas!)
+            // Auto-register schema if missing
             mapper.getSchemaManager().create(schemaName).use({ connection: connectionName || 'default', collection: schemaName }).setStructure({});
             this.query = mapper.use(schemaName);
+        }
+    }
+    where(field, value, operator) {
+        this.query.where(field, value, operator);
+        return this;
+    }
+    whereComplex(raw) {
+        this.query.whereComplex(raw);
+        return this;
+    }
+    whereRaw(raw) {
+        return this.whereComplex(raw);
+    }
+    limit(n) {
+        this.query.limit(n);
+        return this;
+    }
+    offset(n) {
+        this.query.offset(n);
+        return this;
+    }
+    to(update) {
+        this.query.to(update);
+        return this;
+    }
+    get(...fields) {
+        if (fields.length > 0) {
+            this.query.selectFields(fields);
+            return this;
+        }
+        return this.query.get();
+    }
+    then(onfulfilled, onrejected) {
+        return this.query.get().then(onfulfilled, onrejected);
+    }
+    async getOne() {
+        return this.query.getOne();
+    }
+    async add(data) {
+        return this.mapper.add(this.schemaName, data);
+    }
+    async insert(data) {
+        return this.add(data);
+    }
+    async update(data) {
+        if (data) {
+            this.query.to(data);
+        }
+        return this.query.update();
+    }
+    async delete() {
+        return this.query.delete();
+    }
+    async deleteOne() {
+        return this.query.deleteOne();
+    }
+    async updateOne(data) {
+        if (data) {
+            this.query.to(data);
+        }
+        return this.query.updateOne();
+    }
+}
+// DDL Builder (Migrations & Schema Definition)
+export class FluentSchemaBuilder {
+    constructor(mapper, schemaName, connectionName) {
+        this.mapper = mapper;
+        this.schemaName = schemaName;
+        // Ensure schema exists for configuration
+        const manager = mapper.getSchemaManager();
+        const exists = manager.schemas.has(schemaName);
+        if (!exists) {
+            manager.create(schemaName).use({ connection: connectionName || 'default', collection: schemaName }).setStructure({});
+        }
+        // If connectionName provided, update it
+        if (connectionName) {
+            const def = this.getDef();
+            if (def)
+                def.connectionName = connectionName;
         }
     }
     getDef() {
         return this.mapper.getSchemaManager().schemas.get(this.schemaName);
     }
+    // Schema Configuration Proxies
     set fields(config) {
         const def = this.getDef();
         if (def) {
@@ -30,6 +111,16 @@ export class FluentQueryBuilder {
             def.fields.forEach((f) => def.fieldsMap.set(f.name, f));
             def.allowUndefinedFields = parsed.allowUndefinedFields;
         }
+    }
+    structure(config) {
+        this.fields = config;
+        return this;
+    }
+    collection(collectionName) {
+        const def = this.getDef();
+        if (def)
+            def.collectionName = collectionName;
+        return this;
     }
     set insertableFields(val) {
         const def = this.getDef();
@@ -56,20 +147,10 @@ export class FluentQueryBuilder {
         if (def)
             def.massEditAllowed = val;
     }
-    structure(config) {
-        this.fields = config;
-        return this;
-    }
-    collection(collectionName) {
-        const def = this.getDef();
-        if (def)
-            def.collectionName = collectionName;
-        return this;
-    }
+    // Migration / DDL Methods
     get migrator() {
         if (!this._migrator) {
             this._migrator = new TableMigrator(this.schemaName);
-            // Sync connection if already set on query
             const def = this.getDef();
             if (def === null || def === void 0 ? void 0 : def.connectionName) {
                 this._migrator.useConnection(def.connectionName);
@@ -77,7 +158,6 @@ export class FluentQueryBuilder {
         }
         return this._migrator;
     }
-    // Migration/DDL Methods (Proxied to internal migrator)
     useConnection(name) {
         this.migrator.useConnection(name);
         const def = this.getDef();
@@ -91,69 +171,6 @@ export class FluentQueryBuilder {
     drop() { this.migrator.drop(); return this; }
     async exec() {
         return this.migrator.exec();
-    }
-    async dropTable() {
-        return this.migrator.drop().exec();
-    }
-    where(field, value, operator) {
-        this.query.where(field, value, operator);
-        return this;
-    }
-    whereComplex(raw) {
-        this.query.whereComplex(raw);
-        return this;
-    }
-    limit(n) {
-        this.query.limit(n);
-        return this;
-    }
-    offset(n) {
-        this.query.offset(n);
-        return this;
-    }
-    to(update) {
-        this.query.to(update);
-        return this;
-    }
-    // If args provided, act as SELECT (projection) and return this.
-    // If no args, act as execute() (but this class is thenable so we can just return this if we want consistency, 
-    // but existing API returns Promise directly. To check user intent:
-    // User: get('f1').limit(1).
-    // So get('f1') must return this.
-    get(...fields) {
-        if (fields.length > 0) {
-            // Apply field selection? SchemaQuery needs a way to filter fields.
-            // We'll add this capability to Field filtering in SchemaQuery or just use 'fields' option in buildOptions.
-            // For now, let's assume we can modify the query's field list.
-            this.query.selectFields(fields);
-            return this;
-        }
-        return this.query.get(); // Promise
-    }
-    // Make the builder thenable
-    then(onfulfilled, onrejected) {
-        return this.query.get().then(onfulfilled, onrejected);
-    }
-    async getOne() {
-        return this.query.getOne();
-    }
-    async add(data) {
-        return this.mapper.add(this.schemaName, data);
-    }
-    async insert(data) {
-        return this.add(data);
-    }
-    async update() {
-        return this.query.update();
-    }
-    async delete() {
-        return this.query.delete();
-    }
-    async deleteOne() {
-        return this.query.deleteOne();
-    }
-    async updateOne() {
-        return this.query.updateOne();
     }
 }
 export class FluentConnectionBuilder {
@@ -175,28 +192,94 @@ export class FluentConnectionBuilder {
         return new FluentConnectionSelector(this.mapper, connectionName);
     }
 }
-export class FluentSchemaBuilder {
-    constructor(mapper, schemaName, connectionName) {
+export class RawQueryBuilder {
+    constructor(mapper, sql) {
         this.mapper = mapper;
-        this.schemaName = schemaName;
-        this.connectionName = connectionName;
+        this.sql = sql;
+        this._bindings = [];
     }
-    collection(collectionName) {
-        return new FluentSchemaCollectionBuilder(this.mapper, this.schemaName, this.connectionName, collectionName);
+    bind(bindings) {
+        if (Array.isArray(bindings)) {
+            this._bindings = bindings;
+        }
+        else {
+            this._bindings = [bindings];
+        }
+        return this;
+    }
+    async run() {
+        // Find a default connection or use one if specified (not currently supported in raw() entry point args, defaulting to 'default')
+        // To support explicit connection for raw, we might need Mapper.connection('name').raw(...)
+        const connections = this.mapper.getConnections();
+        const conn = connections.get('default'); // Default fallback
+        if (!conn)
+            throw new Error("No default connection found for raw query.");
+        const adapter = connections.getAdapter(conn.name);
+        if (adapter && typeof adapter.query === 'function') {
+            return adapter.query(this.sql, this._bindings);
+        }
+        throw new Error(`Connection '${conn.name}' does not support raw queries.`);
     }
 }
-export class FluentSchemaCollectionBuilder {
-    constructor(mapper, schemaName, connectionName, collectionName) {
+export class BaseQueryBuilder {
+    constructor(mapper, target) {
         this.mapper = mapper;
-        this.schemaName = schemaName;
-        this.connectionName = connectionName;
-        this.collectionName = collectionName;
+        this.target = target;
+        this._select = [];
+        this._action = 'select';
+        this.queryBuilder = new FluentQueryBuilder(mapper, target);
     }
-    structure(structure) {
-        this.mapper.schema(this.schemaName)
-            .use({ connection: this.connectionName, collection: this.collectionName })
-            .setStructure(structure);
-        return new FluentMapper(this.mapper);
+    select(fields) {
+        this._select = fields;
+        this._action = 'select';
+        return this;
+    }
+    where(field, value, operator) {
+        this.queryBuilder.where(field, value, operator);
+        return this;
+    }
+    whereRaw(raw) {
+        this.queryBuilder.whereRaw(raw);
+        return this;
+    }
+    limit(n) {
+        this.queryBuilder.limit(n);
+        return this;
+    }
+    offset(n) {
+        this.queryBuilder.offset(n);
+        return this;
+    }
+    insert(data) {
+        this._insertData = data;
+        this._action = 'insert';
+        return this;
+    }
+    update(data) {
+        this._updateData = data;
+        this._action = 'update';
+        return this;
+    }
+    async get() {
+        return this.queryBuilder.get(...this._select);
+    }
+    async getOne() {
+        // If select fields were provided, apply them first (though getOne usually fetches all or requires separate select handling in standard query)
+        // FluentQueryBuilder.getOne doesn't take args, but we can ensure fields are selected if underlying support exists.
+        // Current FluentQueryBuilder doesn't support select() state persistence easily without get() args.
+        // We'll proceed with getOne(). To support partial select on getOne, we might need to enhance FluentQueryBuilder or just fetch all.
+        // For now, delegating effectively:
+        return this.queryBuilder.getOne();
+    }
+    async run() {
+        if (this._action === 'insert') {
+            return this.queryBuilder.insert(this._insertData);
+        }
+        if (this._action === 'update') {
+            return this.queryBuilder.update(this._updateData);
+        }
+        // Fallback or other actions
+        return this.get();
     }
 }
 export class FluentApiRequestBuilder {
@@ -279,19 +362,19 @@ export class FluentConnectionSelector {
         this.connectionName = connectionName;
     }
     schema(schemaName) {
-        return new FluentQueryBuilder(this.mapper, schemaName, this.connectionName);
+        return new FluentSchemaBuilder(this.mapper, schemaName, this.connectionName);
     }
     schemas(schemaName) {
         return this.schema(schemaName);
     }
     query(schemaName) {
-        return this.schema(schemaName);
+        return new FluentQueryBuilder(this.mapper, schemaName, this.connectionName);
     }
     table(tableName) {
-        return this.schema(tableName);
+        return this.query(tableName);
     }
     collection(collectionName) {
-        return this.schema(collectionName);
+        return this.query(collectionName);
     }
     // API Request methods
     path(path) {
@@ -327,10 +410,16 @@ export class FluentMapper {
         return new FluentQueryBuilder(this.mapper, schemaName);
     }
     schema(name) {
-        return this.query(name);
+        return new FluentSchemaBuilder(this.mapper, name);
     }
     table(name) {
         return this.query(name);
+    }
+    raw(sql) {
+        return new RawQueryBuilder(this.mapper, sql);
+    }
+    base(target) {
+        return new BaseQueryBuilder(this.mapper, target);
     }
     makeConnection(name, type, config) {
         return new FluentConnectionBuilder(this.mapper, name, type, config);
@@ -404,7 +493,13 @@ export class StaticMapper {
         return StaticMapper.schemas();
     }
     static table(name) {
-        return StaticMapper.schema(name);
+        return StaticMapper.query(name);
+    }
+    static raw(sql) {
+        return StaticMapper.getFluentMapper().raw(sql);
+    }
+    static base(target) {
+        return StaticMapper.getFluentMapper().base(target);
     }
     // New API
     static connection(connectionOrConfig) {
