@@ -1,13 +1,22 @@
-import { Connections, SchemaManager } from './index.js';
+import { Connections, SchemaManager, ConnectionType } from './index.js';
 export interface DatabaseConnectionConfig {
     name: string;
-    type: 'mysql' | 'sql' | 'firestore' | 'mongodb';
-    host: string;
-    port: number;
-    database: string;
-    user: string;
+    type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'postgres' | 'sqlite';
+    host?: string;
+    port?: number;
+    database?: string;
+    user?: string;
     password?: string;
     ssl?: boolean;
+    filename?: string;
+    mode?: number;
+    [key: string]: any;
+}
+export interface SqliteConnectionConfig {
+    name: string;
+    type: 'sqlite';
+    filename: string;
+    mode?: number;
     [key: string]: any;
 }
 export interface ApiConnectionConfig {
@@ -18,7 +27,7 @@ export interface ApiConnectionConfig {
     timeout?: number;
     [key: string]: any;
 }
-export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig;
+export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig | SqliteConnectionConfig;
 export interface ConfigSchema {
     name: string;
     connection: string;
@@ -55,7 +64,7 @@ export declare class ConfigBasedMapper {
     getSchemaManager(): SchemaManager;
     use(schemaName: string): any;
     schema(name: string): any;
-    connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>): import("./mapper.js").Mapper;
+    connect(name: string, type: ConnectionType, config: Record<string, any>): import("./mapper.js").Mapper;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     add(schemaName: string, data: Record<string, any>): Promise<any>;

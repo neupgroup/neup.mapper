@@ -1,6 +1,6 @@
 import type { DbAdapter, QueryOptions } from './orm/index.js';
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
-export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite';
+export type ConnectionType = 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'postgres' | 'api' | 'sqlite';
 export interface Field {
     name: string;
     type: ColumnType;
@@ -130,7 +130,7 @@ export { default } from './mapper.js';
 export { StaticMapper } from './fluent-mapper.js';
 export type { FluentQueryBuilder, FluentConnectionBuilder, FluentSchemaBuilder, FluentSchemaCollectionBuilder, FluentConnectionSelector, FluentMapper } from './fluent-mapper.js';
 export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config.js';
-export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConnectionConfig, ConfigSchema } from './config.js';
+export type { MapperConfig, ConnectionConfig, DatabaseConnectionConfig, ApiConnectionConfig, SqliteConnectionConfig, ConfigSchema } from './config.js';
 export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, APIAdapter, createAPIAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
 export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, APIAdapterConfig, AdapterConfig } from './adapters/index.js';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors.js';

@@ -224,11 +224,13 @@ function inferConnectionType(url) {
     if (url.includes('mysql'))
         return 'mysql';
     if (url.includes('postgres') || url.includes('postgresql'))
-        return 'sql';
+        return 'postgres';
     if (url.includes('mongodb'))
         return 'mongodb';
     if (url.includes('firestore'))
         return 'firestore';
+    if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite'))
+        return 'sqlite';
     return 'sql'; // default to sql
 }
 export default ConfigBasedMapper;

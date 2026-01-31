@@ -1,4 +1,4 @@
-import { SchemaManager } from './index.js';
+import { SchemaManager, ConnectionType } from './index.js';
 import { TableMigrator } from './migrator.js';
 export declare class FluentQueryBuilder {
     private mapper;
@@ -87,10 +87,10 @@ export declare class FluentMapper {
     private mapper;
     constructor(mapper: any);
     query(schemaName: string): FluentQueryBuilder;
-    makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
+    makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     useConnection(connectionName: string): FluentConnectionSelector;
     connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
-    makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
+    makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     add(schemaName: string, data: Record<string, any>): Promise<any>;
@@ -100,8 +100,8 @@ export declare class FluentMapper {
 export declare class StaticMapper {
     private static instance;
     private static getFluentMapper;
-    static makeConnection(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
-    static makeTempConnection(type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>): FluentConnectionBuilder;
+    static makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
+    static makeTempConnection(type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder;
     static query(schemaName: string): FluentQueryBuilder;
     static connection(connectionOrConfig: string | Record<string, any>): FluentConnectionSelector;
     static useConnection(connectionName: string): FluentConnectionSelector;

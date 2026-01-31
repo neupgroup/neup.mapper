@@ -1,3 +1,4 @@
+import { ConnectionType } from './index.js';
 export type EnvDslConnections = Record<string, Record<string, string>>;
 /**
  * Parse a simple DSL of the form:
@@ -15,7 +16,7 @@ export type EnvDslConnections = Record<string, Record<string, string>>;
 export declare function parseConnectionsDsl(text: string): EnvDslConnections;
 export type NormalizedConnection = {
     name: string;
-    type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api';
+    type: ConnectionType;
     key: Record<string, any>;
 };
 /**

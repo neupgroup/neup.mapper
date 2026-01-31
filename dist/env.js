@@ -80,7 +80,7 @@ export function toNormalizedConnections(map) {
     const conns = [];
     for (const [name, kv] of Object.entries(map)) {
         const rawType = (kv['type'] || kv['dbType'] || '').toLowerCase();
-        const type = ['mysql', 'sql', 'firestore', 'mongodb', 'api'].includes(rawType) ? rawType : 'api';
+        const type = ['mysql', 'sql', 'firestore', 'mongodb', 'postgres', 'api', 'sqlite'].includes(rawType) ? rawType : 'api';
         const { type: _omitType, dbType: _omitDbType, ...rest } = kv;
         conns.push({ name, type, key: rest });
     }
