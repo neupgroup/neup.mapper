@@ -35,6 +35,7 @@ export declare class APIAdapter implements DbAdapter {
     updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void>;
     deleteDocument(collectionName: string, docId: string): Promise<void>;
     request(method: string, endpoint: string, data?: any, customHeaders?: Record<string, string | string[]>): Promise<any>;
+    raw(query: string, params?: any[]): Promise<any>;
 }
 /**
  * Factory function to create API adapter

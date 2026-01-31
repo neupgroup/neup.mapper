@@ -34,8 +34,10 @@ import { Mapper, TableMigrator } from '@neupgroup/mapper';
 
 export async function up() {
     // const table = Mapper.schemas().table('${tableName}');
-    // table.addColumn('id').type('int').isPrimary().autoIncrement().exec();
+    // table.useConnection('default');
+    // table.addColumn('id').type('int').isPrimary().autoIncrement();
     // ... add more columns
+    // await table.exec();
     console.log('Migrating up: ${tableName}');
 }
 

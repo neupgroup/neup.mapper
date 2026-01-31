@@ -17,9 +17,13 @@ export declare class ColumnBuilder {
 export declare class TableMigrator {
     private name;
     private columns;
+    private connectionName;
     constructor(name: string);
+    useConnection(name: string): this;
     addColumn(name: string): ColumnBuilder;
     getColumns(): any[];
+    private getAdapter;
+    private generateCreateSql;
     exec(): Promise<void>;
     drop(): Promise<void>;
     dropColumn(columnName: string): Promise<void>;

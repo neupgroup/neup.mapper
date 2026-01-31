@@ -168,6 +168,10 @@ export class APIAdapter {
             headers: customHeaders,
         });
     }
+    async raw(query, params) {
+        // API adapter raw could be a generic request or just return null
+        return null;
+    }
 }
 /**
  * Factory function to create API adapter

@@ -10,6 +10,27 @@ if (!fs.existsSync(indexFilePath)) {
     process.exit(0);
 }
 async function run() {
+    // Load connections
+    const connectionDir = path.resolve(process.cwd(), 'src/connection');
+    if (fs.existsSync(connectionDir)) {
+        const { StaticMapper } = await import('../fluent-mapper.js');
+        const connFiles = fs.readdirSync(connectionDir).filter(f => f.endsWith('.ts'));
+        for (const file of connFiles) {
+            const name = file.replace('.ts', '');
+            const filePath = path.resolve(connectionDir, file);
+            try {
+                const mod = await import('file://' + filePath);
+                const config = mod.config;
+                if (config) {
+                    console.log(`Loading connection: ${name}`);
+                    StaticMapper.makeConnection(name, config.type, config);
+                }
+            }
+            catch (e) {
+                console.warn(`Failed to load connection ${name}: ${e.message}`);
+            }
+        }
+    }
     const content = fs.readFileSync(indexFilePath, 'utf-8');
     const matchMigrations = content.match(/migrations = \[(.*?)\]/s);
     const matchCompleted = content.match(/completed = \[(.*?)\]/s);

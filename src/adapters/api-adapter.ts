@@ -245,6 +245,11 @@ export class APIAdapter implements DbAdapter {
             headers: customHeaders as any,
         });
     }
+
+    async raw(query: string, params?: any[]): Promise<any> {
+        // API adapter raw could be a generic request or just return null
+        return null;
+    }
 }
 
 /**

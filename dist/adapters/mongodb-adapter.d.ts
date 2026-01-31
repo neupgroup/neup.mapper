@@ -49,6 +49,7 @@ export declare class MongoDBAdapter implements DbAdapter {
      * Get collection statistics
      */
     getStats(collectionName: string): Promise<any>;
+    raw(query: string, params?: any[]): Promise<any>;
 }
 /**
  * Factory function to create MongoDB adapter

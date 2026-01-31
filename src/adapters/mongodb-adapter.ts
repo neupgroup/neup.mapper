@@ -264,6 +264,19 @@ export class MongoDBAdapter implements DbAdapter {
         const collection = this.db.collection(collectionName);
         return await collection.stats();
     }
+
+    async raw(query: string, params?: any[]): Promise<any> {
+        await this.ensureConnected();
+        try {
+            // Try to parse query as a command object if it's a string
+            const command = typeof query === 'string' ? JSON.parse(query) : query;
+            return await this.db.command(command);
+        } catch (e) {
+            // For migrations, if it's not JSON, we might not be able to do much
+            // but we can at least return the database object for custom logic if params are provided
+            return this.db;
+        }
+    }
 }
 
 /**
