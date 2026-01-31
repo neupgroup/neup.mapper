@@ -19,4 +19,6 @@ export declare class TableMigrator {
     private columns;
     constructor(name: string);
     addColumn(name: string): ColumnBuilder;
+    getColumns(): any[];
+    exec(): Promise<void>;
 }
