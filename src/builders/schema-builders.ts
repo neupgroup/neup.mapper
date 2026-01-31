@@ -32,6 +32,14 @@ export class SchemaCreator {
         return this;
     }
 
+    useConnection(connectionName: string): this {
+        this.migrator.useConnection(connectionName);
+        // Also update in-memory definition
+        const def = (this.mapper.getSchemaManager() as any).schemas.get(this.name);
+        if (def) def.connectionName = connectionName;
+        return this;
+    }
+
     async exec(): Promise<void> {
         return this.migrator.exec();
     }
@@ -48,6 +56,11 @@ export class SchemaUpdater {
     selectColumn(name: string) { return this.migrator.selectColumn(name); }
     dropColumn(name: string) { this.migrator.dropColumn(name); return this; }
 
+    useConnection(connectionName: string): this {
+        this.migrator.useConnection(connectionName);
+        return this;
+    }
+
     async exec(): Promise<void> {
         return this.migrator.exec();
     }
@@ -56,8 +69,17 @@ export class SchemaUpdater {
 export class SchemaDropper {
     constructor(private name: string) { }
 
+    private connectionName: string = 'default';
+
+    useConnection(name: string): this {
+        this.connectionName = name;
+        return this;
+    }
+
     async exec(): Promise<void> {
-        return new TableMigrator(this.name).drop().exec();
+        const migrator = new TableMigrator(this.name);
+        migrator.useConnection(this.connectionName);
+        return migrator.drop().exec();
     }
 }
 

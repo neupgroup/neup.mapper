@@ -7,6 +7,7 @@ export declare class SchemaCreator {
     private ensureRegistration;
     addColumn(name: string): import("../migrator.js").ColumnBuilder;
     structure(config: any): this;
+    useConnection(connectionName: string): this;
     exec(): Promise<void>;
 }
 export declare class SchemaUpdater {
@@ -17,11 +18,14 @@ export declare class SchemaUpdater {
     addColumn(name: string): import("../migrator.js").ColumnBuilder;
     selectColumn(name: string): import("../migrator.js").ColumnBuilder;
     dropColumn(name: string): this;
+    useConnection(connectionName: string): this;
     exec(): Promise<void>;
 }
 export declare class SchemaDropper {
     private name;
     constructor(name: string);
+    private connectionName;
+    useConnection(name: string): this;
     exec(): Promise<void>;
 }
 export declare class SchemaHandler {
