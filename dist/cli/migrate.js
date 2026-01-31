@@ -8,6 +8,7 @@ Usage: npm run migrate [command]
 
 Commands:
   (none)     Run all pending migrations to reach top level
+  init       Regenerate the migration index file based on existing files
   up         Migrate one level up
   down       Migrate one level down (rollback)
   refresh    Roll back all migrations and run them all again
@@ -22,12 +23,58 @@ Description:
 `);
     process.exit(0);
 }
-// Commands: '' (all up), 'up' (1 up), 'down' (1 down), 'refresh' (all down then all up)
+// Commands: '' (all up), 'init' (recreate index), 'up' (1 up), 'down' (1 down), 'refresh' (all down then all up)
 const command = args[0] || 'all';
 const migrationDir = path.resolve(process.cwd(), 'src/migration');
 const indexFilePath = path.join(migrationDir, 'index.ts');
+if (command === 'init') {
+    if (!fs.existsSync(migrationDir)) {
+        // Create the directory if it doesn't exist
+        fs.mkdirSync(migrationDir, { recursive: true });
+        console.log(`Created migration directory: ${migrationDir}`);
+    }
+    let completed = [];
+    let currentVersion = -1;
+    // Try to preserve existing state if index exists
+    if (fs.existsSync(indexFilePath)) {
+        try {
+            const content = fs.readFileSync(indexFilePath, 'utf-8');
+            const matchCompleted = content.match(/completed = \[(.*?)\]/s);
+            const matchVersion = content.match(/currentVersion = (.*?);/);
+            if (matchCompleted) {
+                completed = matchCompleted[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(Boolean);
+            }
+            if (matchVersion) {
+                currentVersion = parseInt(matchVersion[1]);
+            }
+            console.log('Preserving existing completion state.');
+        }
+        catch (e) {
+            console.warn('Could not read existing state from index.ts, starting fresh state.');
+        }
+    }
+    // Scan for migration files
+    const files = fs.readdirSync(migrationDir)
+        .filter(f => f.endsWith('.ts') && f !== 'index.ts')
+        .sort();
+    const migrations = files.map(f => f.replace('.ts', ''));
+    const indexContent = `
+export const migrations = [
+${migrations.map(m => `    '${m}'`).join(',\n')}
+];
+
+export const completed = [
+${completed.map(m => `    '${m}'`).join(',\n')}
+];
+
+export const currentVersion = ${currentVersion};
+`;
+    fs.writeFileSync(indexFilePath, indexContent.trim() + '\n');
+    console.log(`Successfully regenerated ${indexFilePath} with ${migrations.length} migrations.`);
+    process.exit(0);
+}
 if (!fs.existsSync(indexFilePath)) {
-    console.log('No migrations found.');
+    console.log('No migrations found. Run "npm run migrate init" if you have migration files but no index.');
     process.exit(0);
 }
 async function run() {

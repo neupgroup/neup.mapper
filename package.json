@@ -1,7 +1,7 @@
 {
   "name": "@neupgroup/mapper",
   "description": "Neup.Mapper core library for schema and mapping utilities",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -23,7 +23,8 @@
     "create-connection": "npx tsx src/cli/create-connection.ts",
     "migrate": "npx tsx src/cli/migrate.ts",
     "migrate-up": "npx tsx src/cli/migrate.ts up",
-    "migrate-down": "npx tsx src/cli/migrate.ts down"
+    "migrate-down": "npx tsx src/cli/migrate.ts down",
+    "prepublishOnly": "npm run build"
   },
   "publishConfig": {
     "access": "public"
