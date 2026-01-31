@@ -3,13 +3,23 @@ import { createMapper } from './mapper.js';
 
 export interface DatabaseConnectionConfig {
   name: string;
-  type: 'mysql' | 'sql' | 'firestore' | 'mongodb';
-  host: string;
-  port: number;
-  database: string;
-  user: string;
+  type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'sqlite';
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
   password?: string;
   ssl?: boolean;
+  filename?: string;
+  mode?: number;
+  [key: string]: any;
+}
+
+export interface SqliteConnectionConfig {
+  name: string;
+  type: 'sqlite';
+  filename: string;
+  mode?: number;
   [key: string]: any;
 }
 
@@ -22,7 +32,7 @@ export interface ApiConnectionConfig {
   [key: string]: any;
 }
 
-export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig;
+export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig | SqliteConnectionConfig;
 
 export interface ConfigSchema {
   name: string;
@@ -166,7 +176,7 @@ export class ConfigBasedMapper {
     return this.mapper.schema(name);
   }
 
-  connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api', config: Record<string, any>) {
+  connect(name: string, type: 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'api' | 'sqlite', config: Record<string, any>) {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
@@ -290,11 +300,12 @@ function loadConfigFromEnvironment(): MapperConfig | null {
   return null;
 }
 
-function inferConnectionType(url: string): 'mysql' | 'sql' | 'firestore' | 'mongodb' {
+function inferConnectionType(url: string): 'mysql' | 'sql' | 'firestore' | 'mongodb' | 'sqlite' {
   if (url.includes('mysql')) return 'mysql';
   if (url.includes('postgres') || url.includes('postgresql')) return 'sql';
   if (url.includes('mongodb')) return 'mongodb';
   if (url.includes('firestore')) return 'firestore';
+  if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite')) return 'sqlite';
   return 'sql'; // default to sql
 }
 
