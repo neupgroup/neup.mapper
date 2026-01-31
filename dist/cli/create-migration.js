@@ -65,6 +65,7 @@ else {
 const indexFilePath = path.join(migrationDir, 'index.ts');
 let migrations = [];
 let completed = [];
+let currentVersion = -1;
 if (fs.existsSync(indexFilePath)) {
     const content = fs.readFileSync(indexFilePath, 'utf-8');
     const matchMigrations = content.match(/migrations = \[(.*?)\]/s);
@@ -74,6 +75,10 @@ if (fs.existsSync(indexFilePath)) {
     const matchCompleted = content.match(/completed = \[(.*?)\]/s);
     if (matchCompleted) {
         completed = matchCompleted[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(Boolean);
+    }
+    const matchVersion = content.match(/currentVersion = (.*?);/);
+    if (matchVersion) {
+        currentVersion = parseInt(matchVersion[1]);
     }
 }
 const migrationName = fileName.replace('.ts', '');
@@ -88,6 +93,8 @@ ${migrations.map(m => `    '${m}'`).join(',\n')}
 export const completed = [
 ${completed.map(m => `    '${m}'`).join(',\n')}
 ];
+
+export const currentVersion = ${currentVersion};
 `;
 fs.writeFileSync(indexFilePath, indexContent.trim() + '\n');
 console.log(`Updated migration index: ${indexFilePath}`);

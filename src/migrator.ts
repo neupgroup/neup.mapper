@@ -126,4 +126,62 @@ ${fieldsContent}
         fs.writeFileSync(schemaFilePath, schemaContent.trim() + '\n');
         console.log(`Updated schema: ${schemaFilePath}`);
     }
+    async drop(): Promise<void> {
+        const fs = await import('fs');
+        const path = await import('path');
+        const schemasDir = path.resolve(process.cwd(), 'src/schemas');
+        const schemaFilePath = path.join(schemasDir, `${this.name}.ts`);
+        if (fs.existsSync(schemaFilePath)) {
+            fs.unlinkSync(schemaFilePath);
+            console.log(`Deleted schema: ${schemaFilePath}`);
+        }
+    }
+
+    async dropColumn(columnName: string): Promise<void> {
+        const fs = await import('fs');
+        const path = await import('path');
+        const schemasDir = path.resolve(process.cwd(), 'src/schemas');
+        const schemaFilePath = path.join(schemasDir, `${this.name}.ts`);
+
+        if (fs.existsSync(schemaFilePath)) {
+            // Very simple implementation: filter out the line with the column
+            const content = fs.readFileSync(schemaFilePath, 'utf-8');
+            const lines = content.split('\n');
+            const filteredLines = lines.filter(line => !line.includes(`name: '${columnName}'`));
+            fs.writeFileSync(schemaFilePath, filteredLines.join('\n'));
+            console.log(`Dropped column ${columnName} from schema ${this.name}`);
+        }
+    }
+
+    async dropUnique(columnName: string): Promise<void> {
+        const fs = await import('fs');
+        const path = await import('path');
+        const schemasDir = path.resolve(process.cwd(), 'src/schemas');
+        const schemaFilePath = path.join(schemasDir, `${this.name}.ts`);
+
+        if (fs.existsSync(schemaFilePath)) {
+            let content = fs.readFileSync(schemaFilePath, 'utf-8');
+            // Remove ", isUnique: true" from the line containing the column
+            const regex = new RegExp(`({ name: '${columnName}', .*?), isUnique: true(.*})`);
+            content = content.replace(regex, '$1$2');
+            fs.writeFileSync(schemaFilePath, content);
+            console.log(`Dropped unique constraint from ${columnName} in schema ${this.name}`);
+        }
+    }
+
+    async dropPrimaryKey(columnName: string): Promise<void> {
+        const fs = await import('fs');
+        const path = await import('path');
+        const schemasDir = path.resolve(process.cwd(), 'src/schemas');
+        const schemaFilePath = path.join(schemasDir, `${this.name}.ts`);
+
+        if (fs.existsSync(schemaFilePath)) {
+            let content = fs.readFileSync(schemaFilePath, 'utf-8');
+            const regex = new RegExp(`({ name: '${columnName}', .*?), isPrimary: true(.*})`);
+            content = content.replace(regex, '$1$2');
+            fs.writeFileSync(schemaFilePath, content);
+            console.log(`Dropped primary key constraint from ${columnName} in schema ${this.name}`);
+        }
+    }
 }
+

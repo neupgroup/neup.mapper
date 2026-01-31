@@ -73,6 +73,7 @@ export const ${tableName} = {
 const indexFilePath = path.join(migrationDir, 'index.ts');
 let migrations: string[] = [];
 let completed: string[] = [];
+let currentVersion = -1;
 
 if (fs.existsSync(indexFilePath)) {
     const content = fs.readFileSync(indexFilePath, 'utf-8');
@@ -83,6 +84,10 @@ if (fs.existsSync(indexFilePath)) {
     const matchCompleted = content.match(/completed = \[(.*?)\]/s);
     if (matchCompleted) {
         completed = matchCompleted[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(Boolean);
+    }
+    const matchVersion = content.match(/currentVersion = (.*?);/);
+    if (matchVersion) {
+        currentVersion = parseInt(matchVersion[1]);
     }
 }
 
@@ -99,6 +104,8 @@ ${migrations.map(m => `    '${m}'`).join(',\n')}
 export const completed = [
 ${completed.map(m => `    '${m}'`).join(',\n')}
 ];
+
+export const currentVersion = ${currentVersion};
 `;
 
 fs.writeFileSync(indexFilePath, indexContent.trim() + '\n');

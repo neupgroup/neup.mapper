@@ -21,4 +21,8 @@ export declare class TableMigrator {
     addColumn(name: string): ColumnBuilder;
     getColumns(): any[];
     exec(): Promise<void>;
+    drop(): Promise<void>;
+    dropColumn(columnName: string): Promise<void>;
+    dropUnique(columnName: string): Promise<void>;
+    dropPrimaryKey(columnName: string): Promise<void>;
 }
