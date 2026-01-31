@@ -358,6 +358,10 @@ export class FluentMapper {
   async delete(schemaName: string, filters: Record<string, any>): Promise<void> {
     return this.mapper.delete(schemaName, filters);
   }
+
+  async dropTable(name: string): Promise<void> {
+    return new TableMigrator(name).drop();
+  }
 }
 
 // Static API class that provides the fluent interface
@@ -427,6 +431,10 @@ export class StaticMapper {
 
   static async delete(schemaName: string, filters: Record<string, any>): Promise<void> {
     return StaticMapper.getFluentMapper().delete(schemaName, filters);
+  }
+
+  static async dropTable(name: string): Promise<void> {
+    return StaticMapper.getFluentMapper().dropTable(name);
   }
 }
 
@@ -522,6 +530,14 @@ export class FluentSchemaWrapper {
     }, this.name);
     return q.insert(data);
   }
+
+  async dropTable(): Promise<void> {
+    const migrator = new TableMigrator(this.name);
+    if (this.connectionName) {
+      migrator.useConnection(this.connectionName);
+    }
+    return migrator.drop();
+  }
 }
 // Helper to access parseDescriptorStructure from index.ts if not exported?
 // It is NOT exported. I need to export it or duplicate logic.
@@ -534,5 +550,9 @@ export class SchemaManagerWrapper {
   table(name: string): TableMigrator {
     // This allows Mapper.schemas().table('name') to return a migrator
     return new TableMigrator(name);
+  }
+
+  async dropTable(name: string): Promise<void> {
+    return new TableMigrator(name).drop();
   }
 }

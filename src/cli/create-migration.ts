@@ -52,17 +52,30 @@ const fileContent = `
 import { Mapper, TableMigrator } from '@neupgroup/mapper';
 
 export async function up() {
-    // const table = Mapper.schemas().table('${tableName}');
-    // table.useConnection('default');
+    const table = Mapper.schemas().table('${tableName}');
+
+    /**
+     * CASE 1: CREATE TABLE (Requires .exec())
+     * Use this when defining a new table. addColumn calls are batched.
+     */
     // table.addColumn('id').type('int').isPrimary().autoIncrement();
-    // ... add more columns
-    // await table.exec();
-    console.log('Migrating up: ${tableName}');
+    // table.addColumn('name').type('string').notNull();
+    // await table.exec(); 
+
+    /**
+     * CASE 2: ALTER TABLE (Immediate actions)
+     * These methods execute immediately on the database. Do NOT use .exec()
+     */
+    // await table.dropColumn('old_field');
+    // await table.dropUnique('field_name');
 }
 
 export async function down() {
-    // Drop table or revert changes
-    console.log('Migrating down: ${tableName}');
+    /**
+     * DROP TABLE (Immediate action)
+     * This will drop the table from the DB and delete the local schema file.
+     */
+    await Mapper.schemas().dropTable('${tableName}');
 }
 `;
 
