@@ -2,10 +2,27 @@
 import * as fs from 'fs';
 import * as path from 'path';
 const args = process.argv.slice(2);
+if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+Usage: npm run create-migration <tableName> [remarks]
+
+Arguments:
+  tableName    The name of the database table (will be used for schema and migration file)
+  remarks      Optional description of the migration (e.g., 'add_index')
+
+Options:
+  --help, -h   Show this help message
+
+Example:
+  npm run create-migration users initial_schema
+`);
+    process.exit(0);
+}
 const tableName = args[0];
 const remarks = args[1] || '';
 if (!tableName) {
-    console.error('Usage: npm run create-migration <tableName> [remarks]');
+    console.error('Error: Table name is required.');
+    console.log('Usage: npm run create-migration <tableName> [remarks]');
     process.exit(1);
 }
 // Ensure directories exist
@@ -28,8 +45,10 @@ import { Mapper, TableMigrator } from '@neupgroup/mapper';
 
 export async function up() {
     // const table = Mapper.schemas().table('${tableName}');
-    // table.addColumn('id').type('int').isPrimary().autoIncrement().exec();
+    // table.useConnection('default');
+    // table.addColumn('id').type('int').isPrimary().autoIncrement();
     // ... add more columns
+    // await table.exec();
     console.log('Migrating up: ${tableName}');
 }
 

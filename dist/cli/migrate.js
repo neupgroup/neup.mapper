@@ -2,6 +2,24 @@
 import * as fs from 'fs';
 import * as path from 'path';
 const args = process.argv.slice(2);
+if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+Usage: npm run migrate [command]
+
+Commands:
+  up       Run all pending migrations (default)
+  down     Roll back the last completed migration
+
+Options:
+  --help, -h   Show this help message
+
+Description:
+  This command will look for migration files in src/migration,
+  load database connections from src/connection, and execute
+  pending changes on your database while updating local schema files.
+`);
+    process.exit(0);
+}
 const command = args[0] || 'up'; // 'up' or 'down'
 const migrationDir = path.resolve(process.cwd(), 'src/migration');
 const indexFilePath = path.join(migrationDir, 'index.ts');
