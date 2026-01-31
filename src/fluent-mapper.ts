@@ -305,6 +305,10 @@ export class FluentMapper {
     return new FluentQueryBuilder(this.mapper, schemaName);
   }
 
+  table(name: string): FluentQueryBuilder {
+    return this.query(name);
+  }
+
   makeConnection(name: string, type: ConnectionType, config: Record<string, any>): FluentConnectionBuilder {
     return new FluentConnectionBuilder(this.mapper, name, type, config);
   }
@@ -388,6 +392,10 @@ export class StaticMapper {
 
   static query(schemaName: string): FluentQueryBuilder {
     return StaticMapper.getFluentMapper().query(schemaName);
+  }
+
+  static table(name: string): FluentQueryBuilder {
+    return StaticMapper.query(name);
   }
 
   // New API
