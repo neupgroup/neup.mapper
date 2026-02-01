@@ -30,80 +30,89 @@ npm run create-migration <tableName> [remarks]
 Apply pending changes.
 ```bash
 # Run all pending migrations
-npm run migrate
+npm run migrate-up
 
-# Migrate exactly one level up
-npm run migrate up
+# Run exactly 1 pending migration
+npm run migrate-up 1
 
-# Rollback exactly one level down
-npm run migrate down
+# Run next 2 pending migrations
+npm run migrate-up 2
 
-# Refresh: Rollback everything and start over
-npm run migrate refresh
+# Rollback the last migration (default)
+npm run migrate-down
+
+# Rollback the last 1 migration
+npm run migrate-down 1
+
+# Rollback the last 2 migrations
+npm run migrate-down 2
 ```
 
 ---
 
 ## 📝 Writing Migrations
 
-Migrations use a **deferred execution model**. You queue operations and they are applied only when you call `await schema.exec()`.
+Migrations use a **deferred execution model**. You queue operations and they are applied only when you call `await migrator.exec()`.
 
-### **Creating a Schema**
+### **Creating a Table**
 ```ts
-export const usesConnection = 'primary'; // Target connection
+import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
 
 export async function up() {
-    // schema() is the universal entry point for SQL, NoSQL and API
-    const schema = Mapper.schema('users');
-    schema.useConnection(usesConnection);
-
-    schema.addColumn('id').type('int').isPrimary().autoIncrement();
-    schema.addColumn('username').type('string').notNull();
-    schema.addColumn('email').type('string').isUnique();
+    const migrator = new TableMigrator('users');
     
-    await schema.exec(); // Creates DB table & src/schemas/users.ts
+    // Define columns
+    migrator.addColumn('id').type('int').autoIncrement().isPrimary();
+    migrator.addColumn('username').type('varchar').length(50).notNull();
+    migrator.addColumn('email').type('varchar').length(100).isUnique();
+    migrator.addColumn('bio').type('text');
+    
+    await migrator.exec(); // Creates DB table & updates schema file
 }
 ```
 
-### **Altering a Schema**
+### **Altering a Table**
 ```ts
+import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
+
 export async function up() {
-    const schema = Mapper.schema('users');
+    const migrator = new TableMigrator('users');
     
     // Select existing column to modify
-    schema.selectColumn('email').type('string').notNull();
+    migrator.selectColumn('email').type('varchar').length(150).notNull();
     
     // Drop columns or constraints
-    schema.dropColumn('old_field');
-    schema.selectColumn('temp_tag').drop();
+    migrator.dropColumn('bio');
+    migrator.dropUnique('email');
 
-    await schema.exec(); // Updates DB & src/schemas/users.ts
+    await migrator.exec();
 }
 ```
 
-### **Dropping a Schema**
+### **Dropping a Table**
 ```ts
+import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
+
 export async function down() {
-    const schema = Mapper.schema('users');
-    await schema.dropTable().exec(); // Drops DB table & deletes local schema file
+    const migrator = new TableMigrator('users');
+    await migrator.drop().exec(); // Drops DB table & schema file
 }
 ```
 
 ---
 
 ## 🚀 Automatic Schemas
-You no longer need to manually register schemas. As soon as you create a migration, the system is aware of the schema name. 
+As soon as you run a migration, the system automatically generates or updates the schema definition in `src/mapper/schemas`.
 
 In your application code, simply call:
 ```ts
 const users = await Mapper.schema('users').get();
 ```
-The library will automatically register a placeholder schema in memory if one hasn't been discovered on disk yet.
 
 ---
 
 ## 🔍 Migration State
-The migration state is tracked in `src/migration/index.ts`.
-- `migrations`: List of all discovered migration files.
-- `completed`: List of migrations already applied.
-- `currentVersion`: Index of the last applied migration.
+The migration state is tracked in two places:
+1. **Registry**: `src/mapper/migrations/index.ts` lists all available migration files.
+2. **Execution State**: `.migration_state.json` (in `src/mapper` or root) tracks which migrations have been applied.
+

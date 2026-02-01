@@ -4,12 +4,16 @@ import * as path from 'path';
 import { createMapper } from '../mapper.js';
 const args = process.argv.slice(2);
 const command = args[0] || 'up'; // up, down, init, refresh
+const limit = args[1] ? parseInt(args[1], 10) : null;
 // Determine paths
-const mapperDir = path.resolve(process.cwd(), 'src/mapper');
-const migrationsDir = path.join(mapperDir, 'migrations');
-const schemasDir = path.join(mapperDir, 'schemas');
+const cwd = process.cwd();
+const srcMapperDir = path.join(cwd, 'src/mapper');
+const distMapperDir = path.join(cwd, 'dist/mapper');
+// Determine registry path (prioritize dist/compiled code)
+const distRegistryPath = path.join(distMapperDir, 'migrations/index.js');
+const srcRegistryPath = path.join(srcMapperDir, 'migrations/index.ts');
+const registryPath = fs.existsSync(distRegistryPath) ? distRegistryPath : srcRegistryPath;
 async function main() {
-    const registryPath = path.join(migrationsDir, 'index.ts');
     if (!fs.existsSync(registryPath)) {
         console.error(`No migrations found at ${registryPath}`);
         console.error('Run "npm run create-migration <name>" first.');
@@ -25,7 +29,15 @@ async function main() {
     }
     // Get current state
     // Simple state tracking using a local file for now (or DB table in future)
-    const stateFile = path.join(mapperDir, '.migration_state.json');
+    // We prefer src/mapper for the state file if it exists (so it persists), otherwise dist or cwd
+    let stateDir = srcMapperDir;
+    if (!fs.existsSync(srcMapperDir)) {
+        if (fs.existsSync(distMapperDir))
+            stateDir = distMapperDir;
+        else
+            stateDir = cwd; // Fallback to root
+    }
+    const stateFile = path.join(stateDir, '.migration_state.json');
     let state = { executed: [] };
     if (fs.existsSync(stateFile)) {
         state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
@@ -34,7 +46,10 @@ async function main() {
     const mapper = createMapper();
     if (command === 'up') {
         console.log('Running pending migrations...');
+        let count = 0;
         for (const mig of migrations) {
+            if (limit && count >= limit)
+                break;
             if (!state.executed.includes(mig.name)) {
                 console.log(`Migrating: ${mig.name}`);
                 try {
@@ -42,6 +57,7 @@ async function main() {
                     state.executed.push(mig.name);
                     fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
                     console.log(`Completed: ${mig.name}`);
+                    count++;
                 }
                 catch (e) {
                     console.error(`Failed to run migration ${mig.name}:`, e);
@@ -51,24 +67,28 @@ async function main() {
         }
     }
     else if (command === 'down') {
-        const lastMigration = state.executed.pop();
-        if (lastMigration) {
-            const mig = migrations.find((m) => m.name === lastMigration);
-            if (mig) {
-                console.log(`Rolling back: ${lastMigration}`);
-                try {
-                    await mig.down();
-                    fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
-                    console.log(`Rolled back: ${lastMigration}`);
-                }
-                catch (e) {
-                    console.error(`Failed to rollback ${lastMigration}:`, e);
-                    process.exit(1);
+        const steps = limit || 1;
+        for (let i = 0; i < steps; i++) {
+            const lastMigration = state.executed.pop();
+            if (lastMigration) {
+                const mig = migrations.find((m) => m.name === lastMigration);
+                if (mig) {
+                    console.log(`Rolling back: ${lastMigration}`);
+                    try {
+                        await mig.down();
+                        fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
+                        console.log(`Rolled back: ${lastMigration}`);
+                    }
+                    catch (e) {
+                        console.error(`Failed to rollback ${lastMigration}:`, e);
+                        process.exit(1);
+                    }
                 }
             }
-        }
-        else {
-            console.log('No executed migrations to rollback.');
+            else {
+                console.log('No executed migrations to rollback.');
+                break;
+            }
         }
     }
     else if (command === 'refresh') {
