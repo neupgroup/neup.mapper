@@ -10,12 +10,17 @@ export class ColumnBuilder {
             autoIncrement: false,
             defaultValue: undefined,
             enumValues: [],
-            foreignKey: null
+            foreignKey: null,
+            length: undefined
         };
         this.def.name = name;
     }
     type(t) {
         this.def.type = t;
+        return this;
+    }
+    length(len) {
+        this.def.length = len;
         return this;
     }
     isPrimary() {
@@ -136,7 +141,7 @@ export class TableMigrator {
     }
     generateColumnSql(col, type) {
         let def = `\`${col.name}\` `;
-        let dbType = 'VARCHAR(255)';
+        let dbType = `VARCHAR(${col.length || 255})`;
         if (col.type === 'int')
             dbType = 'INTEGER'; // SQLite strict requirement for AUTOINCREMENT
         else if (col.type === 'number')

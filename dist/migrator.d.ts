@@ -5,6 +5,7 @@ export declare class ColumnBuilder {
     private def;
     constructor(name: string, migrator?: TableMigrator | undefined);
     type(t: ColumnType | string): this;
+    length(len: number): this;
     isPrimary(): this;
     isUnique(): this;
     notNull(): this;
