@@ -80,9 +80,8 @@ const files = fs.readdirSync(migrationsDir)
 
 files.forEach((f: string) => {
   const name = f.replace('.ts', '');
-  const varName = `mig_${name.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  imports += `import * as ${varName} from './${name}.js';\n`;
-  exports += `  { name: '${name}', ...${varName} },\n`;
+  imports += `import './${name}.js';\n`;
+  exports += `  { name: '${name}', path: './${name}.js' },\n`;
 });
 
 exports += '];\n';

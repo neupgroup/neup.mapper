@@ -47,20 +47,23 @@ async function main() {
     if (command === 'up') {
         console.log('Running pending migrations...');
         let count = 0;
-        for (const mig of migrations) {
+        for (const migInfo of migrations) {
             if (limit && count >= limit)
                 break;
-            if (!state.executed.includes(mig.name)) {
-                console.log(`Migrating: ${mig.name}`);
+            if (!state.executed.includes(migInfo.name)) {
+                console.log(`Migrating: ${migInfo.name}`);
                 try {
+                    // Dynamic import of the migration file
+                    const migPath = path.resolve(path.dirname(registryPath), migInfo.path);
+                    const mig = await import(migPath);
                     await mig.up();
-                    state.executed.push(mig.name);
+                    state.executed.push(migInfo.name);
                     fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
-                    console.log(`Completed: ${mig.name}`);
+                    console.log(`Completed: ${migInfo.name}`);
                     count++;
                 }
                 catch (e) {
-                    console.error(`Failed to run migration ${mig.name}:`, e);
+                    console.error(`Failed to run migration ${migInfo.name}:`, e);
                     process.exit(1);
                 }
             }
@@ -71,10 +74,13 @@ async function main() {
         for (let i = 0; i < steps; i++) {
             const lastMigration = state.executed.pop();
             if (lastMigration) {
-                const mig = migrations.find((m) => m.name === lastMigration);
-                if (mig) {
+                const migInfo = migrations.find((m) => m.name === lastMigration);
+                if (migInfo) {
                     console.log(`Rolling back: ${lastMigration}`);
                     try {
+                        // Dynamic import of the migration file
+                        const migPath = path.resolve(path.dirname(registryPath), migInfo.path);
+                        const mig = await import(migPath);
                         await mig.down();
                         fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
                         console.log(`Rolled back: ${lastMigration}`);
