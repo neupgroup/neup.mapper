@@ -1,4 +1,4 @@
-import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types';
+import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types.js';
 export interface SQLiteConfig {
     filename: string;
     mode?: number;

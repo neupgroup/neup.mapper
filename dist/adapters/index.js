@@ -2,12 +2,10 @@
 export { MySQLAdapter, createMySQLAdapter } from './mysql-adapter.js';
 export { PostgreSQLAdapter, createPostgreSQLAdapter } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter } from './mongodb-adapter.js';
-export { APIAdapter, createAPIAdapter } from './api-adapter.js';
 export { SQLiteAdapter, createSQLiteAdapter } from './sqlite-adapter.js';
 import { createMySQLAdapter } from './mysql-adapter.js';
 import { createPostgreSQLAdapter } from './postgres-adapter.js';
 import { createMongoDBAdapter } from './mongodb-adapter.js';
-import { createAPIAdapter } from './api-adapter.js';
 import { createSQLiteAdapter } from './sqlite-adapter.js';
 /**
  * Auto-create adapter based on connection type
@@ -23,9 +21,6 @@ export function createAdapter(adapterConfig) {
         case 'mongodb':
         case 'mongo':
             return createMongoDBAdapter(adapterConfig.config);
-        case 'api':
-        case 'rest':
-            return createAPIAdapter(adapterConfig.config);
         case 'sqlite':
         case 'sqlite3':
             return createSQLiteAdapter(adapterConfig.config);
@@ -65,11 +60,6 @@ export function createAdapterFromUrl(url) {
             return createMongoDBAdapter({
                 uri: url,
                 database: urlObj.pathname.replace('/', ''),
-            });
-        case 'http':
-        case 'https':
-            return createAPIAdapter({
-                baseUrl: url,
             });
         case 'sqlite':
         case 'sqlite3':

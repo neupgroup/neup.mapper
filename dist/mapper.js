@@ -1,5 +1,10 @@
-import { Connections, SchemaManager } from './index.js';
+import { Connections } from './connections.js';
+import { SchemaManager } from './schema-manager.js';
 import { autoAttachAdapter } from './adapters/index.js';
+import { BaseDispatcher } from './builders/base-dispatcher.js';
+import { SchemaDispatcher } from './builders/schema-builders.js';
+import { RawBuilder } from './builders/raw-builder.js';
+import { FluentConnectionSelector } from './fluent-mapper.js';
 export class Mapper {
     constructor() {
         this.configured = false;
@@ -9,8 +14,41 @@ export class Mapper {
     static getInstance() {
         if (!Mapper.instance) {
             Mapper.instance = new Mapper();
+            Mapper.instance.autoConfigure();
         }
         return Mapper.instance;
+    }
+    // Static Fluent API Entry Points
+    static base(target) {
+        // Default connection usage
+        return new BaseDispatcher(Mapper.getInstance(), target);
+    }
+    static connection(name) {
+        return new FluentConnectionSelector(Mapper.getInstance(), name);
+    }
+    static query(target) {
+        return Mapper.base(target);
+    }
+    static schema(name) {
+        return new SchemaDispatcher(Mapper.getInstance(), name);
+    }
+    static raw(sql) {
+        return new RawBuilder(Mapper.getInstance(), sql);
+    }
+    static connect(name, type, config) {
+        const mapper = Mapper.getInstance();
+        mapper.connect(name, type, config);
+        return mapper;
+    }
+    static async discover() {
+        const { discover } = await import('./discovery.js');
+        return discover();
+    }
+    static async get(target) {
+        return Mapper.base(target).select().get();
+    }
+    static async add(target, data) {
+        return Mapper.base(target).insert(data).run();
     }
     // Auto-configuration based on environment or defaults
     autoConfigure() {
@@ -60,7 +98,7 @@ export class Mapper {
             return 'firestore';
         if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite'))
             return 'sqlite';
-        return 'api';
+        return 'sqlite'; // Default fallback instead of api
     }
     applyConfig(config) {
         if (config.connection) {
@@ -74,8 +112,7 @@ export class Mapper {
         }
     }
     applyDefaultConfig() {
-        // Create a default in-memory connection for quick start
-        this.connections.create('default', 'api').key({ endpoint: 'memory' });
+        // No default connection by default to enforce explicit setup or discovery
     }
     createSchema(config) {
         const builder = this.schemaManager.create(config.name);

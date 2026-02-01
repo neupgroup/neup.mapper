@@ -1,4 +1,7 @@
-import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types';
+import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 export interface SQLiteConfig {
     filename: string;

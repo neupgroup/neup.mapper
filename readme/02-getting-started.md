@@ -2,119 +2,77 @@
 
 ## 🚀 Quick Start Options
 
-### **Option 1: One-Import Quick Start**
+### **Option 1: Static Fluent API (Recommended)**
 **The simplest way to get started - just import and use:**
 
 ```ts
-import Mapper from '@neupgroup/mapper'
+import { Mapper } from '@neupgroup/mapper';
 
-// 1. Define a schema (Automatically registered in memory!)
-// 1. Define a schema (Automatically registered in memory!)
+// 1. Define a schema (In-memory registration)
 Mapper.schema('users')
-  .collection('users')
+  .create()
   .structure({
     id: ['int', 'auto-increment'],
     name: 'string',
     email: 'unique'
-  })
+  });
 
-// 2. Use immediately
-await Mapper.add('users', { name: 'Alice', email: 'alice@example.com' })
-const allUsers = await Mapper.query('users').limit(10).get()
-const alice = await Mapper.query('users').where('email', 'alice@example.com').getOne()
-await Mapper.query('users').where('email', 'alice@example.com').to({ name: 'Alice Cooper' }).update()
-await Mapper.query('users').where('email', 'alice@example.com').delete()
+// 2. Use immediately with Mapper.base()
+await Mapper.base('users').insert({ name: 'Alice', email: 'alice@example.com' }).run();
+
+const allUsers = await Mapper.base('users').limit(10).get();
+
+const alice = await Mapper.base('users').where('email', 'alice@example.com').getOne();
+
+await Mapper.base('users')
+    .update({ name: 'Alice Cooper' })
+    .where('email', 'alice@example.com')
+    .run();
+
+await Mapper.base('users').delete().where('email', 'alice@example.com').run();
 ```
 
-### **Option 2: Configuration-Based Approach**
-**Use configuration files to manage connections and schemas:**
+### **Option 2: Connection Management**
+**Manually manage connections:**
 
 ```ts
-import { createConfigMapper } from '@neupgroup/mapper'
+import { Mapper } from '@neupgroup/mapper';
 
-// Define your configuration
-const config = {
-  connections: [
-    ['mydb', 'sql', 'user', 'myapp', 'localhost', 5432],
-    ['myapi', 'api', 'https://api.example.com']
-  ],
-  schemas: {
-    users: {
-      connection: 'mydb',
-      collection: 'users',
-      structure: [
-        { name: 'id', type: 'int', autoIncrement: true },
-        { name: 'name', type: 'string' },
-        { name: 'email', type: 'string' }
-      ]
-    }
-  }
-}
-
-// Create mapper from config
-const mapper = createConfigMapper(config)
-
-// Use the mapper
-// Use the mapper
-await mapper.connection('mydb').table('users').insert({ name: 'Alice', email: 'alice@example.com' })
-const users = await mapper.connection('mydb').table('users').get()
-```
-
-### **Option 3: PHP-Style Fluent API**
-**Use static method chaining for dynamic connections:**
-
-```ts
-import { StaticMapper as Mapper } from '@neupgroup/mapper'
-
-// Create persistent connections
-Mapper.makeConnection('mydb', 'mysql', {
+// Connect to a database
+Mapper.connect('mydb', 'mysql', {
   host: 'localhost',
-  user: 'root', 
+  user: 'root',
   password: 'password',
   database: 'myapp'
-})
+});
 
-// Use connections with method chaining
-const users = await Mapper.connection('mydb')
-  .query('users')
-  .where('active', true)
-  .get()
+// Use the specific connection via schema
+Mapper.schema('users')
+    .create()
+    .useConnection('mydb')
+    .structure({ ... });
 
-// Create temporary connections on-the-fly
-const temp = Mapper.connection({
-  type: 'mongodb',
-  url: 'mongodb://localhost:27017'
-})
-
-const data = await temp.query('prospects')
-  .where('expired', false)
-  .get()
-
-// SQLite connection
-const logs = await Mapper.connection({
-  type: 'sqlite',
-  filename: './local_store.db'
-})
-  .query('logs')
-  .get()
+// Or use raw queries
+await Mapper.raw('SELECT * FROM users').get();
 ```
 
-### **Option 4: Project Discovery Mode (Recommended)**
+### **Option 3: Project Discovery Mode**
 **Automatically discover connections and schemas from your standard project structure:**
 
 1. Organize your project:
    - `src/config/*.ts` - Connection arrays
    - `src/schemas/*.ts` - Table definitions
+   - `src/migration/` - Database migration files
 
 2. Just discover and go:
 ```ts
-import Mapper from '@neupgroup/mapper'
+import { Mapper } from '@neupgroup/mapper';
 
 // Scans src/config and src/schemas and registers everything
-await Mapper.discover()
+await Mapper.discover();
 
 // Start querying
-const users = await Mapper.query('users').limit(10).get()
+const users = await Mapper.base('users').limit(10).get();
 ```
 
 ---

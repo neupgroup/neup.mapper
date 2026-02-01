@@ -1,4 +1,4 @@
-import { ConnectionType } from './index.js';
+import { ConnectionType } from './types-core.js';
 import { BaseDispatcher } from './builders/base-dispatcher.js';
 import { RawBuilder } from './builders/raw-builder.js';
 import { SchemaDispatcher } from './builders/schema-builders.js';

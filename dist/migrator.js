@@ -138,7 +138,7 @@ export class TableMigrator {
         let def = `\`${col.name}\` `;
         let dbType = 'VARCHAR(255)';
         if (col.type === 'int')
-            dbType = 'INT';
+            dbType = 'INTEGER'; // SQLite strict requirement for AUTOINCREMENT
         else if (col.type === 'number')
             dbType = 'DECIMAL(10,2)';
         else if (col.type === 'boolean')
@@ -148,15 +148,22 @@ export class TableMigrator {
         def += dbType;
         if (col.notNull)
             def += ' NOT NULL';
-        if (col.isPrimary)
+        if (col.isPrimary && type !== 'sqlite')
             def += ' PRIMARY KEY';
         if (col.autoIncrement) {
             if (type === 'mysql')
                 def += ' AUTO_INCREMENT';
-            else if (type === 'sqlite')
-                def += ' AUTOINCREMENT';
+            else if (type === 'sqlite') {
+                if (col.isPrimary)
+                    def += ' PRIMARY KEY AUTOINCREMENT';
+                else
+                    def += ' AUTOINCREMENT';
+            }
             else if (type === 'sql' || type === 'postgres')
                 def += ' SERIAL';
+        }
+        else if (col.isPrimary && type === 'sqlite') {
+            def += ' PRIMARY KEY';
         }
         if (col.defaultValue !== undefined) {
             def += ` DEFAULT ${typeof col.defaultValue === 'string' ? `'${col.defaultValue}'` : col.defaultValue}`;
@@ -171,7 +178,7 @@ export class TableMigrator {
         const { adapter, config } = await this.getAdapter();
         const type = (config === null || config === void 0 ? void 0 : config.type) || 'mysql';
         const quote = (type === 'postgres' || type === 'sql') ? '"' : '`';
-        const schemasDir = path.resolve(process.cwd(), 'src/schemas');
+        const schemasDir = path.resolve(process.cwd(), 'src/mapper/schemas');
         if (!fs.existsSync(schemasDir))
             fs.mkdirSync(schemasDir, { recursive: true });
         const schemaFilePath = path.join(schemasDir, `${this.name}.ts`);

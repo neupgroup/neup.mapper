@@ -2,21 +2,18 @@
 export { MySQLAdapter, createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
 export { PostgreSQLAdapter, createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
-export { APIAdapter, createAPIAdapter, type APIAdapterConfig } from './api-adapter.js';
 export { SQLiteAdapter, createSQLiteAdapter, type SQLiteConfig } from './sqlite-adapter.js';
 
 import type { DbAdapter } from '../orm/types.js';
 import { createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
 import { createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
 import { createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
-import { createAPIAdapter, type APIAdapterConfig } from './api-adapter.js';
 import { createSQLiteAdapter, type SQLiteConfig } from './sqlite-adapter.js';
 
 export type AdapterConfig =
     | { type: 'mysql'; config: MySQLConfig }
     | { type: 'postgres' | 'postgresql' | 'sql'; config: PostgreSQLConfig }
     | { type: 'mongodb' | 'mongo'; config: MongoDBConfig }
-    | { type: 'api' | 'rest'; config: APIAdapterConfig }
     | { type: 'sqlite' | 'sqlite3'; config: SQLiteConfig };
 
 /**
@@ -35,10 +32,6 @@ export function createAdapter(adapterConfig: AdapterConfig): DbAdapter {
         case 'mongodb':
         case 'mongo':
             return createMongoDBAdapter(adapterConfig.config);
-
-        case 'api':
-        case 'rest':
-            return createAPIAdapter(adapterConfig.config);
 
         case 'sqlite':
         case 'sqlite3':
@@ -85,12 +78,6 @@ export function createAdapterFromUrl(url: string): DbAdapter {
             return createMongoDBAdapter({
                 uri: url,
                 database: urlObj.pathname.replace('/', ''),
-            });
-
-        case 'http':
-        case 'https':
-            return createAPIAdapter({
-                baseUrl: url,
             });
 
         case 'sqlite':

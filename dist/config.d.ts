@@ -23,8 +23,6 @@ export interface ApiConnectionConfig {
     name: string;
     type: 'api';
     url: string;
-    headers?: Record<string, string>;
-    timeout?: number;
     [key: string]: any;
 }
 export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig | SqliteConnectionConfig;

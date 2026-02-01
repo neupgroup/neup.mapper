@@ -1,5 +1,11 @@
-import { Connections, SchemaManager, schemas, ConnectionType } from './index.js';
+import { Connections } from './connections.js';
+import { SchemaManager } from './schema-manager.js';
+import { ConnectionType } from './types-core.js';
 import { autoAttachAdapter } from './adapters/index.js';
+import { BaseDispatcher } from './builders/base-dispatcher.js';
+import { SchemaDispatcher } from './builders/schema-builders.js';
+import { RawBuilder } from './builders/raw-builder.js';
+import { FluentConnectionSelector } from './fluent-mapper.js';
 
 export class Mapper {
   private connections: Connections;
@@ -15,8 +21,50 @@ export class Mapper {
   static getInstance(): Mapper {
     if (!Mapper.instance) {
       Mapper.instance = new Mapper();
+      Mapper.instance.autoConfigure();
     }
     return Mapper.instance;
+  }
+
+  // Static Fluent API Entry Points
+  static base(target: string): BaseDispatcher {
+    // Default connection usage
+    return new BaseDispatcher(Mapper.getInstance(), target);
+  }
+
+  static connection(name: string): FluentConnectionSelector {
+    return new FluentConnectionSelector(Mapper.getInstance(), name);
+  }
+
+  static query(target: string): BaseDispatcher {
+    return Mapper.base(target);
+  }
+
+  static schema(name: string): SchemaDispatcher {
+    return new SchemaDispatcher(Mapper.getInstance(), name);
+  }
+
+  static raw(sql: string): RawBuilder {
+    return new RawBuilder(Mapper.getInstance(), sql);
+  }
+
+  static connect(name: string, type: ConnectionType, config: Record<string, any>): Mapper {
+    const mapper = Mapper.getInstance();
+    mapper.connect(name, type, config);
+    return mapper;
+  }
+
+  static async discover(): Promise<any> {
+    const { discover } = await import('./discovery.js');
+    return discover();
+  }
+
+  static async get(target: string): Promise<any> {
+    return Mapper.base(target).select().get();
+  }
+
+  static async add(target: string, data: any): Promise<any> {
+    return Mapper.base(target).insert(data).run();
   }
 
   // Auto-configuration based on environment or defaults
@@ -67,7 +115,7 @@ export class Mapper {
     if (url.includes('mongodb')) return 'mongodb';
     if (url.includes('firestore')) return 'firestore';
     if (url.includes('sqlite') || url.endsWith('.db') || url.endsWith('.sqlite')) return 'sqlite';
-    return 'api';
+    return 'sqlite'; // Default fallback instead of api
   }
 
   private applyConfig(config: any): void {
@@ -84,8 +132,7 @@ export class Mapper {
   }
 
   private applyDefaultConfig(): void {
-    // Create a default in-memory connection for quick start
-    this.connections.create('default', 'api').key({ endpoint: 'memory' });
+    // No default connection by default to enforce explicit setup or discovery
   }
 
   private createSchema(config: any): void {

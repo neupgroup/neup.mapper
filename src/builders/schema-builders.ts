@@ -1,5 +1,5 @@
 import { TableMigrator } from '../migrator.js';
-import { parseDescriptorStructure } from '../index.js';
+import { parseDescriptorStructure } from '../schema-manager.js';
 
 export class SchemaCreator {
     private migrator: TableMigrator;
@@ -28,6 +28,15 @@ export class SchemaCreator {
             def.fields = parsed.fields;
             def.fieldsMap = new Map();
             def.fields.forEach((f: any) => def.fieldsMap.set(f.name, f));
+
+            // Sync with migrator for DDL
+            parsed.fields.forEach((f: any) => {
+                const col = this.migrator.addColumn(f.name).type(f.type);
+                if (f.autoIncrement) col.autoIncrement();
+                if (f.isUnique) col.isUnique();
+                // defaultValue, etc.
+                if (f.defaultValue !== undefined) col.default(f.defaultValue);
+            });
         }
         return this;
     }

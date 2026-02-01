@@ -1,4 +1,10 @@
-import { Connections, SchemaManager, ConnectionType } from './index.js';
+import { Connections } from './connections.js';
+import { SchemaManager } from './schema-manager.js';
+import { ConnectionType } from './types-core.js';
+import { BaseDispatcher } from './builders/base-dispatcher.js';
+import { SchemaDispatcher } from './builders/schema-builders.js';
+import { RawBuilder } from './builders/raw-builder.js';
+import { FluentConnectionSelector } from './fluent-mapper.js';
 export declare class Mapper {
     private connections;
     private schemaManager;
@@ -6,6 +12,15 @@ export declare class Mapper {
     private configured;
     constructor();
     static getInstance(): Mapper;
+    static base(target: string): BaseDispatcher;
+    static connection(name: string): FluentConnectionSelector;
+    static query(target: string): BaseDispatcher;
+    static schema(name: string): SchemaDispatcher;
+    static raw(sql: string): RawBuilder;
+    static connect(name: string, type: ConnectionType, config: Record<string, any>): Mapper;
+    static discover(): Promise<any>;
+    static get(target: string): Promise<any>;
+    static add(target: string, data: any): Promise<any>;
     autoConfigure(): this;
     private detectEnvironmentConfig;
     private inferConnectionType;

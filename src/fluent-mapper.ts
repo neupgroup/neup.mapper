@@ -1,4 +1,6 @@
-import { Connections, SchemaManager, type SchemaDef, ConnectionType } from './index.js';
+import { Connections } from './connections.js';
+import { SchemaManager } from './schema-manager.js';
+import { SchemaDef, ConnectionType } from './types-core.js';
 import { createMapper } from './mapper.js';
 import { TableMigrator } from './migrator.js';
 

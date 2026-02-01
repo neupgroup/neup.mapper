@@ -26,9 +26,9 @@ export interface SqliteConnectionConfig {
 export interface ApiConnectionConfig {
   name: string;
   type: 'api';
-  url: string;
-  headers?: Record<string, string>;
-  timeout?: number;
+  url: string; // Base URL for API
+  // Intentionally limited config for legacy support, but API adapter is removed.
+  // This type is kept to prevent breakage in config files but usage will fail at runtime if attempted.
   [key: string]: any;
 }
 

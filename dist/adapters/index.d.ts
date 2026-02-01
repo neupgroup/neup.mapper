@@ -1,13 +1,11 @@
 export { MySQLAdapter, createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
 export { PostgreSQLAdapter, createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
-export { APIAdapter, createAPIAdapter, type APIAdapterConfig } from './api-adapter.js';
 export { SQLiteAdapter, createSQLiteAdapter, type SQLiteConfig } from './sqlite-adapter.js';
 import type { DbAdapter } from '../orm/types.js';
 import { type MySQLConfig } from './mysql-adapter.js';
 import { type PostgreSQLConfig } from './postgres-adapter.js';
 import { type MongoDBConfig } from './mongodb-adapter.js';
-import { type APIAdapterConfig } from './api-adapter.js';
 import { type SQLiteConfig } from './sqlite-adapter.js';
 export type AdapterConfig = {
     type: 'mysql';
@@ -18,9 +16,6 @@ export type AdapterConfig = {
 } | {
     type: 'mongodb' | 'mongo';
     config: MongoDBConfig;
-} | {
-    type: 'api' | 'rest';
-    config: APIAdapterConfig;
 } | {
     type: 'sqlite' | 'sqlite3';
     config: SQLiteConfig;
