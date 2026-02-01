@@ -31,7 +31,7 @@ const fileName = `${timestamp}_${migrationName}.ts`;
 const filePath = path.join(migrationsDir, fileName);
 
 // Migration template
-const template = `import { TableMigrator } from '../../../dist/index.js';
+const template = `import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
 
 export async function up() {
   const migrator = new TableMigrator('${migrationName}');
