@@ -9,14 +9,8 @@ The simplest way to get started is using the static fluent API directly:
 ```typescript
 import { Mapper } from '@neupgroup/mapper';
 
-// 1. Register a schema (optional if using discovery)
-Mapper.schema('users')
-    .create()
-    .structure({
-        id: 'int',
-        name: 'string',
-        email: 'string'
-    });
+// 1. Discover Connections & Schemas
+await Mapper.discover();
 
 // 2. Query seamlessly
 const users = await Mapper.base('users')

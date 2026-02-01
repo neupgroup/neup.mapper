@@ -1,7 +1,7 @@
 {
   "name": "@neupgroup/mapper",
   "description": "Neup.Mapper core library for schema and mapping utilities",
-  "version": "1.7.9",
+  "version": "1.7.10",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
