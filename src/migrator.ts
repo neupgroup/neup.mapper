@@ -11,7 +11,8 @@ export class ColumnBuilder {
         autoIncrement: false,
         defaultValue: undefined,
         enumValues: [],
-        foreignKey: null
+        foreignKey: null,
+        length: undefined
     };
 
     constructor(private name: string, private migrator?: TableMigrator) {
@@ -20,6 +21,11 @@ export class ColumnBuilder {
 
     type(t: ColumnType | string): this {
         this.def.type = t;
+        return this;
+    }
+
+    length(len: number): this {
+        this.def.length = len;
         return this;
     }
 
@@ -162,7 +168,7 @@ export class TableMigrator {
 
     private generateColumnSql(col: any, type: string): string {
         let def = `\`${col.name}\` `;
-        let dbType = 'VARCHAR(255)';
+        let dbType = `VARCHAR(${col.length || 255})`;
         if (col.type === 'int') dbType = 'INTEGER'; // SQLite strict requirement for AUTOINCREMENT
         else if (col.type === 'number') dbType = 'DECIMAL(10,2)';
         else if (col.type === 'boolean') dbType = 'TINYINT(1)';
