@@ -32,7 +32,7 @@ if (!connectionName) {
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'src/config');
+const configDir = path.resolve(process.cwd(), 'src/mapper/connection');
 if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
 const filePath = path.join(configDir, `${connectionName}.ts`);
