@@ -9,6 +9,7 @@ export declare class ColumnBuilder {
     isPrimary(): this;
     isUnique(): this;
     notNull(): this;
+    isNullable(): this;
     autoIncrement(): this;
     default(val: any): this;
     values(vals: any[]): this;

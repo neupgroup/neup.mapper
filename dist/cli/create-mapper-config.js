@@ -1,32 +1,25 @@
 import * as fs from 'fs';
 import * as path from 'path';
-
 async function generateMapperConfig() {
     const cwd = process.cwd();
     const mapperDir = path.join(cwd, 'src', 'mapper');
     const connectionsDir = path.join(mapperDir, 'connections');
     const schemasDir = path.join(mapperDir, 'schemas');
     const outputFile = path.join(cwd, 'src', 'mapper-init.ts');
-
     console.log(`Scanning for mapper configuration in ${mapperDir}...`);
-
-    let connectionsFiles: string[] = [];
+    let connectionsFiles = [];
     if (fs.existsSync(connectionsDir)) {
         connectionsFiles = fs.readdirSync(connectionsDir).filter(f => f.endsWith('.ts') || f.endsWith('.js'));
     }
-
-    let schemasFiles: string[] = [];
+    let schemasFiles = [];
     if (fs.existsSync(schemasDir)) {
         schemasFiles = fs.readdirSync(schemasDir).filter(f => f.endsWith('.ts') || f.endsWith('.js'));
     }
-
-    const imports: string[] = [];
-    const registrations: string[] = [];
-
+    const imports = [];
+    const registrations = [];
     // Header
     imports.push(`import { Mapper } from '@neupgroup/mapper';`);
     imports.push('');
-
     // Process Connections
     if (connectionsFiles.length > 0) {
         imports.push('// Connections');
@@ -35,7 +28,6 @@ async function generateMapperConfig() {
             const importName = `connection_${name}`;
             // Use relative path from src/Mapper.ts to src/mapper/connections/...
             imports.push(`import * as ${importName} from './mapper/connections/${name}';`);
-
             registrations.push(`// Register Connection: ${name}`);
             registrations.push(`const ${importName}_config = ${importName}.connection || ${importName}.default;`);
             registrations.push(`if (${importName}_config) {`);
@@ -44,7 +36,6 @@ async function generateMapperConfig() {
             registrations.push('');
         }
     }
-
     // Process Schemas
     if (schemasFiles.length > 0) {
         imports.push('// Schemas');
@@ -52,7 +43,6 @@ async function generateMapperConfig() {
             const name = file.split('.')[0];
             const importName = `schema_${name}`;
             imports.push(`import * as ${importName} from './mapper/schemas/${name}';`);
-
             registrations.push(`// Register Schema: ${name}`);
             registrations.push(`const ${importName}_def = ${importName}['${name}'] || ${importName}.schema || ${importName}.default;`);
             registrations.push(`if (${importName}_def && ${importName}_def.fields) {`);
@@ -61,7 +51,6 @@ async function generateMapperConfig() {
             registrations.push(`        .useConnection(${importName}_def.usesConnection || 'default')`);
             registrations.push(`        .structure(${importName}_def.fields);`);
             registrations.push('');
-            
             // Options logic copied from discovery.ts
             registrations.push(`    // Apply options`);
             registrations.push(`    const options: any = {};`);
@@ -83,7 +72,6 @@ async function generateMapperConfig() {
             registrations.push('');
         }
     }
-
     const content = [
         ...imports,
         '',
@@ -94,9 +82,7 @@ async function generateMapperConfig() {
         'export default mapper;',
         ''
     ].join('\n');
-
     fs.writeFileSync(outputFile, content);
     console.log(`Generated ${outputFile}`);
 }
-
 generateMapperConfig().catch(console.error);

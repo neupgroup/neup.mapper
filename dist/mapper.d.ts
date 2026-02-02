@@ -12,6 +12,7 @@ export declare class Mapper {
     private configured;
     constructor();
     static getInstance(): Mapper;
+    static init(): Mapper;
     static base(target: string): BaseDispatcher;
     static connection(name: string): FluentConnectionSelector;
     static query(target: string): BaseDispatcher;

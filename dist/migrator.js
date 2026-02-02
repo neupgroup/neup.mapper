@@ -35,6 +35,10 @@ export class ColumnBuilder {
         this.def.notNull = true;
         return this;
     }
+    isNullable() {
+        this.def.notNull = false;
+        return this;
+    }
     autoIncrement() {
         this.def.autoIncrement = true;
         return this;

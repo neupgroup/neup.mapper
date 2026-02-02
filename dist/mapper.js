@@ -18,6 +18,9 @@ export class Mapper {
         }
         return Mapper.instance;
     }
+    static init() {
+        return Mapper.getInstance();
+    }
     // Static Fluent API Entry Points
     static base(target) {
         // Default connection usage
