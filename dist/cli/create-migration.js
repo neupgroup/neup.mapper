@@ -67,8 +67,8 @@ const files = fs.readdirSync(migrationsDir)
     .sort(); // Sort by timestamp
 files.forEach((f) => {
     const name = f.replace('.ts', '');
-    imports += `import './${name}.js';\n`;
-    exports += `  { name: '${name}', path: './${name}.js' },\n`;
+    imports += `import './${name}.ts';\n`;
+    exports += `  { name: '${name}', path: './${name}.ts' },\n`;
 });
 exports += '];\n';
 fs.writeFileSync(indexFilePath, `${imports}\n${exports}`);
