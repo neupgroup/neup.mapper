@@ -57,19 +57,3 @@ export const ${migrationName} = {
     fs.writeFileSync(schemaFilePath, schemaTemplate);
     console.log(`Created schema placeholder: ${schemaFilePath}`);
 }
-// Update registry (src/mapper/migrations/index.ts)
-const indexFilePath = path.join(migrationsDir, 'index.ts');
-let imports = '';
-let exports = 'export const migrations = [\n';
-// Read all migration files
-const files = fs.readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
-    .sort(); // Sort by timestamp
-files.forEach((f) => {
-    const name = f.replace('.ts', '');
-    imports += `import './${name}.ts';\n`;
-    exports += `  { name: '${name}', path: './${name}.ts' },\n`;
-});
-exports += '];\n';
-fs.writeFileSync(indexFilePath, `${imports}\n${exports}`);
-console.log(`Updated migration registry: ${indexFilePath}`);

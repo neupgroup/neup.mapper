@@ -129,9 +129,9 @@ function logAction(filename, action, success, error) {
     }
 }
 // 5. Migration Discovery
-// Read files directly from src/mapper/migrations, ignore index.ts
+// Read files directly from src/mapper/migrations
 const migrationFiles = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.ts') && f !== 'index.ts')
+    .filter(f => f.endsWith('.ts'))
     .sort(); // Lexicographical sort (timestamp based)
 const executedState = getExecutedMigrations();
 async function runUp(filename) {
