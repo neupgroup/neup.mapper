@@ -65,6 +65,10 @@ export class UpdateTableBuilder implements DdlExecutor {
         return this;
     }
 
+    modifyColumn(name: string): ColumnBuilder {
+        return this.migrator._modifyColumn(name);
+    }
+
     async exec(): Promise<void> {
         await this.migrator.exec();
     }
@@ -275,6 +279,13 @@ export class Migrator {
         if (!this.tableName) throw new Error("Table name is required for dropColumn");
         this.actions.push({ type: 'dropColumn', payload: columnName });
         return this;
+    }
+
+    _modifyColumn(name: string): ColumnBuilder {
+        if (!this.tableName) throw new Error("Table name is required for modifyColumn");
+        const col = new ColumnBuilder(name, this);
+        this.actions.push({ type: 'modifyColumn', payload: col });
+        return col;
     }
 
     _dropTable(name?: string): this {

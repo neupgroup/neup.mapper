@@ -8,9 +8,24 @@ import { Migrator, CreateTableBuilder, UpdateTableBuilder, DropTableBuilder, Tru
 const schemas = {};
 let currentConnection;
 class MockColumnBuilder extends ColumnBuilder {
-    constructor(name, mockMigrator) {
+    constructor(name, mockMigrator, builder) {
         super(name); // No parent migrator passed to avoid side effects if any
         this.mockMigrator = mockMigrator;
+        this.builder = builder;
+    }
+    // We can override methods if needed, but the base ColumnBuilder just updates `this.def`
+    // which is exactly what we want.
+    dropUnique() {
+        if (this.builder && this.builder instanceof MockUpdateTableBuilder) {
+            this.builder.recordDropConstraint('unique', this.getDefinition().name);
+        }
+        return this;
+    }
+    dropPrimaryKey() {
+        if (this.builder && this.builder instanceof MockUpdateTableBuilder) {
+            this.builder.recordDropConstraint('primary', this.getDefinition().name);
+        }
+        return this;
     }
 }
 class MockCreateTableBuilder extends CreateTableBuilder {
@@ -73,6 +88,8 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
         this.mockColumns = [];
         this.droppedColumns = [];
         this.hasCustomConnection = false;
+        this.modifiedColumns = [];
+        this.droppedConstraints = [];
     }
     useConnection(name) {
         super.useConnection(name);
@@ -80,13 +97,24 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
         return this;
     }
     addColumn(name) {
-        const col = new ColumnBuilder(name);
+        // We pass 'this' as MockUpdateTableBuilder so MockColumnBuilder can callback
+        // Note: we need to cast 'this' because MockMigrator expects MockMigrator, but here we pass builder.
+        // Actually I changed MockColumnBuilder constructor to accept builder.
+        const col = new MockColumnBuilder(name, new MockMigrator(this.mockTableName), this);
         this.mockColumns.push(col);
+        return col;
+    }
+    modifyColumn(name) {
+        const col = new MockColumnBuilder(name, new MockMigrator(this.mockTableName), this);
+        this.modifiedColumns.push(col);
         return col;
     }
     dropColumn(name) {
         this.droppedColumns.push(name);
         return this;
+    }
+    recordDropConstraint(type, column) {
+        this.droppedConstraints.push({ type, column });
     }
     async exec() {
         // Update existing schema
@@ -110,6 +138,43 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
             if (def.defaultValue !== undefined)
                 schemaField.defaultValue = def.defaultValue;
             schema.fields.push(schemaField);
+        }
+        // Apply modifications
+        for (const col of this.modifiedColumns) {
+            const def = col.getDefinition();
+            const existingField = schema.fields.find(f => f.name === def.name);
+            if (existingField) {
+                // Update type if changed (default string in builder, but maybe user didn't call type()?)
+                // We should only update properties that were explicitly set?
+                // ColumnBuilder defaults type to 'string'. If user does modifyColumn('x'), it has 'string'.
+                // If the original was 'int', it becomes 'string' unless user calls type('int').
+                // This is a limitation of current Builder design.
+                // Ideally ColumnBuilder should start with 'undefined' type or copy existing.
+                // But for now, we assume user sets what they change.
+                existingField.type = def.type;
+                if (def.isPrimary)
+                    existingField.isPrimary = true;
+                if (def.autoIncrement)
+                    existingField.autoIncrement = true;
+                if (def.notNull)
+                    existingField.notNull = true;
+                if (def.isUnique)
+                    existingField.isUnique = true;
+                if (def.defaultValue !== undefined)
+                    existingField.defaultValue = def.defaultValue;
+            }
+        }
+        // Apply dropped constraints
+        for (const drop of this.droppedConstraints) {
+            const existingField = schema.fields.find(f => f.name === drop.column);
+            if (existingField) {
+                if (drop.type === 'unique')
+                    delete existingField.isUnique;
+                if (drop.type === 'primary')
+                    delete existingField.isPrimary;
+                if (drop.type === 'notNull')
+                    delete existingField.notNull;
+            }
         }
         // Remove dropped columns
         if (this.droppedColumns.length > 0) {

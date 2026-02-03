@@ -18,6 +18,7 @@ export declare class UpdateTableBuilder implements DdlExecutor {
     useConnection(name: string): this;
     addColumn(name: string): ColumnBuilder;
     dropColumn(name: string): this;
+    modifyColumn(name: string): ColumnBuilder;
     exec(): Promise<void>;
 }
 export declare class DropTableBuilder implements DdlExecutor {
@@ -75,6 +76,7 @@ export declare class Migrator {
     truncate(tableName: string): Promise<any>;
     _addColumn(name: string): ColumnBuilder;
     _dropColumn(columnName: string): this;
+    _modifyColumn(name: string): ColumnBuilder;
     _dropTable(name?: string): this;
     dropUnique(columnName: string): this;
     dropPrimaryKey(columnName: string): this;

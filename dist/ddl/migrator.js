@@ -56,6 +56,9 @@ export class UpdateTableBuilder {
         this.migrator._dropColumn(name);
         return this;
     }
+    modifyColumn(name) {
+        return this.migrator._modifyColumn(name);
+    }
     async exec() {
         await this.migrator.exec();
     }
@@ -231,6 +234,13 @@ export class Migrator {
             throw new Error("Table name is required for dropColumn");
         this.actions.push({ type: 'dropColumn', payload: columnName });
         return this;
+    }
+    _modifyColumn(name) {
+        if (!this.tableName)
+            throw new Error("Table name is required for modifyColumn");
+        const col = new ColumnBuilder(name, this);
+        this.actions.push({ type: 'modifyColumn', payload: col });
+        return col;
     }
     _dropTable(name) {
         const target = name || this.tableName;
