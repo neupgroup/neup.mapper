@@ -14,8 +14,13 @@ export class RawBuilder {
         if (!conn)
             throw new Error("No default connection found for raw query.");
         const adapter = connections.getAdapter(conn.name);
-        if (adapter && typeof adapter.query === 'function') {
-            return adapter.query(this.sql, this._bindings);
+        if (adapter) {
+            if (typeof adapter.raw === 'function') {
+                return adapter.raw(this.sql, this._bindings);
+            }
+            if (typeof adapter.query === 'function') {
+                return adapter.query(this.sql, this._bindings);
+            }
         }
         throw new Error(`Connection '${conn.name}' does not support raw queries.`);
     }

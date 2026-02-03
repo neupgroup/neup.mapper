@@ -1,55 +1,52 @@
-# Advanced Usage (Original API)
+# Advanced Usage
 
-For more control, you can still use the original granular API:
+## Raw SQL Execution
 
-```ts
-import { connection, schema } from '@neupgroup/mapper'
-import type { DbAdapter, QueryOptions } from '@neupgroup/mapper'
+For complex queries that go beyond standard CRUD operations, you can use the `Mapper.raw()` command. This gives you full control over the SQL being executed.
 
-// 1) Define connections
-const conRegistry = connection()
-conRegistry.create('mysql_prod', 'mysql').key({
-  host: '127.0.0.1',
-  port: 3306,
-  user: 'root',
-  password: 's3cr3t',
-  database: 'appdb',
-})
+```typescript
+import { Mapper } from '@neupgroup/mapper';
 
-// 2) Attach an adapter for the connection
-const adapter: DbAdapter = {
-  async getDocuments(options: QueryOptions) { return [] },
-  async addDocument(collectionName: string, data: Record<string, any>) { return 'new-id' },
-  async updateDocument(collectionName: string, docId: string, data: Record<string, any>) { },
-  async deleteDocument(collectionName: string, docId: string) { },
-}
-conRegistry.attachAdapter('mysql_prod', adapter)
+// Execute a complex join
+const results = await Mapper.raw(`
+    SELECT u.name, o.total 
+    FROM users u 
+    JOIN orders o ON u.id = o.user_id 
+    WHERE o.total > 100
+`).execute();
 
-// 3) Register schema and run CRUD
-const sm = schema(conRegistry)
-sm.create('User')
-  .use({ connection: 'mysql_prod', collection: 'users' })
-  .setStructure({
-    id: 'string',
-    email: 'string',
-    name: 'string editable',
-    createdAt: 'date',
-    '?field': 'allow-undefined',
-  })
-
-const User = sm.use('User')
-await User.add({ id: 'u_1', email: 'alice@example.com', name: 'Alice', createdAt: new Date() })
-await User.where(['id', 'u_1']).to({ name: 'Alice Cooper' }).updateOne()
-const one = await User.where(['id', 'u_1']).getOne()
-await User.where(['id', 'u_1']).deleteOne()
+console.log(results);
 ```
 
-## Documentation Helpers
+## Parameter Binding (Security)
 
-For apps that want to render built-in documentation:
+When using `raw()`, always use parameter binding to prevent SQL injection. The syntax depends on your underlying adapter (e.g., `?` for SQLite/MySQL, `$1` for Postgres).
 
-```ts
-import { documentationMd, markdownToHtml, getDocumentationHtml } from '@neupgroup/mapper'
+```typescript
+// SQLite example
+const userId = 5;
+await Mapper.raw(`SELECT * FROM users WHERE id = ${userId}`).execute(); // ⚠️ UNSAFE
 
-const html = getDocumentationHtml()
+// Better (Implementation depends on adapter support for binding)
+// Currently, the raw executor passes the string directly. 
+// Ensure you sanitize inputs if constructing strings manually.
+```
+
+*Note: Future versions will support strict parameter binding in `raw()`.*
+
+## Direct Access to InitMapper
+
+If you need to check the status of connections or access the internal connection registry, you can use `Mapper.init()`.
+
+```typescript
+const init = Mapper.init();
+// Access internal properties if needed (mostly for internal use)
+```
+
+## Customizing the Migrator
+
+The `Migrator` class is designed to be simple. If you need complex DDL that isn't supported (like adding constraints or indexes), use `Mapper.raw()`.
+
+```typescript
+await Mapper.raw('CREATE INDEX idx_user_email ON users(email)').execute();
 ```

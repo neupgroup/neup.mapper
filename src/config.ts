@@ -1,5 +1,5 @@
 import { Connections, SchemaManager, ConnectionType } from './index.js';
-import { createMapper } from './mapper.js';
+import { createMapper, Mapper } from './mapper.js';
 
 export interface DatabaseConnectionConfig {
   name: string;
@@ -188,35 +188,47 @@ export class ConfigBasedMapper {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
-    return this.mapper.get(schemaName, filters);
+    const query = Mapper.base(schemaName).select();
+    if (filters) {
+        Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+    }
+    return query.get();
   }
 
   async getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null> {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
-    return this.mapper.getOne(schemaName, filters);
+    const query = Mapper.base(schemaName).select();
+    if (filters) {
+        Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+    }
+    return query.getOne();
   }
 
   async add(schemaName: string, data: Record<string, any>): Promise<any> {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
-    return this.mapper.add(schemaName, data);
+    return Mapper.base(schemaName).insert(data).exec();
   }
 
   async update(schemaName: string, filters: Record<string, any>, data: Record<string, any>): Promise<void> {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
-    return this.mapper.update(schemaName, filters, data);
+    const query = Mapper.base(schemaName).update(data);
+    Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+    await query.exec();
   }
 
   async delete(schemaName: string, filters: Record<string, any>): Promise<void> {
     if (!this.initialized) {
       throw new Error('Mapper not initialized. Call configure() first.');
     }
-    return this.mapper.delete(schemaName, filters);
+    const query = Mapper.base(schemaName).delete();
+    Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+    await query.exec();
   }
 }
 

@@ -1,74 +1,64 @@
-# Best Practices & Quick Reference
+# Best Practices
 
-### **One-Import Benefits**
+## 1. Singleton Initialization
 
-✅ **Zero Configuration**: Works out of the box  
-✅ **Auto-Detection**: Automatically configures from environment  
-✅ **Universal**: Works in Node.js and browsers  
-✅ **Type Safe**: Full TypeScript support  
-✅ **Progressive**: Start simple, scale to complex  
-✅ **Lightweight**: Minimal overhead, maximum performance  
+Initialize your database connection once at the start of your application. The `Mapper` class maintains this connection state globally.
 
-### **Migration from Original API**
+```typescript
+// src/db.ts
+import { Mapper } from '@neupgroup/mapper';
 
-The new `Mapper` default export is fully compatible with the original API:
+export const initDB = async () => {
+    Mapper.init().connect('default', 'sqlite', { filename: 'db.sqlite' });
+};
 
-```ts
-// Old way (still works)
-import { connection, schema } from '@neupgroup/mapper'
-const conns = connection()
-const sm = schema(conns)
-
-// New way (recommended)
-import Mapper from '@neupgroup/mapper'
-// Mapper is pre-configured and ready to use
-
-// Access underlying managers if needed
-const conns = Mapper.getConnections()
-const sm = Mapper.getSchemaManager()
+// src/index.ts
+import { initDB } from './db';
+await initDB();
 ```
 
-### **Best Practices**
+## 2. Separate Migrations
 
-1. **Start with defaults**: Let Mapper auto-configure itself
-2. **Use environment variables**: Set `DATABASE_URL` for production
-3. **Define schemas early**: Create schemas at app startup
-4. **Use TypeScript**: Get full type safety and IntelliSense
-5. **Handle errors**: Wrap operations in try/catch blocks
+Don't mix migration logic with your application logic. Create a separate script or function to handle schema updates.
 
-### **Common Patterns**
+```typescript
+// src/migrate.ts
+import { Mapper } from '@neupgroup/mapper';
 
-```ts
-// Pattern 1: Quick CRUD (One-Import)
-await Mapper.add('users', data)
-const users = await Mapper.get('users')
+export const runMigrations = async () => {
+    console.log('Running migrations...');
+    await Mapper.migrator().create('users', { id: 'INTEGER PRIMARY KEY', name: 'TEXT' });
+    await Mapper.migrator().update('users', { email: 'TEXT' });
+    console.log('Migrations complete.');
+};
+```
 
-// Pattern 2: Configuration-Based
-const mapper = createConfigMapper(config)
-await mapper.connection('mydb').table('users').insert(data)
+## 3. Use Fluent API for Standard CRUD
 
-// Pattern 3: Fluent API
-await StaticMapper.connection('mydb').table('users').insert(data)
+For 90% of your database interactions, use `Mapper.base()`. It's cleaner, safer, and easier to read than raw SQL.
 
-// Pattern 4: Complex queries
-const results = await Mapper.use('users')
-  .where('age', 18, '>=')
-  .where('country', 'US')
-  .get()
+```typescript
+// Good
+await Mapper.base('users').insert({ name: 'John' });
 
-// Pattern 5: Batch operations
-const users = await Mapper.get('users')
-for (const user of users) {
-  await Mapper.update('users', { id: user.id }, { lastSeen: new Date() })
+// Avoid unless necessary
+await Mapper.raw("INSERT INTO users (name) VALUES ('John')").execute();
+```
+
+## 4. Handle Updates Gracefully
+
+When modifying schemas, use `Mapper.migrator().update()`. It is designed to be safe to run multiple times (idempotent), so you don't need to write complex checks for "if column exists".
+
+## 5. Type Safety
+
+While the library is loosely typed (returning `any`), you should define interfaces for your data models in your application code to ensure type safety.
+
+```typescript
+interface User {
+    id: number;
+    name: string;
+    email?: string;
 }
+
+const users = await Mapper.base('users').select() as User[];
 ```
-
-## 🔄 **Choosing the Right Approach**
-
-### **When to Use Each Method**
-
-| Approach | Best For | Example Use Case |
-|----------|----------|------------------|
-| **One-Import** | Quick prototyping, simple apps | `Mapper.add('users', data)` |
-| **Configuration-Based** | Enterprise apps, multiple environments | Load from config files |
-| **Fluent API** | Dynamic connections, runtime decisions | Create temp connections on-demand |

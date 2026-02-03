@@ -2,11 +2,13 @@
   "name": "testapp",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "create-schemas": "node ../dist/cli/create-schemas.js"
   },
   "dependencies": {
     "@neupgroup/mapper": "file:..",

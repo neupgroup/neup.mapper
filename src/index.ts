@@ -34,8 +34,14 @@ export type { EnvDslConnections, NormalizedConnection } from './env.js';
 export { documentationMd, markdownToHtml, getDocumentationHtml } from './docs.js';
 
 // Export the simplified Mapper and default instance
-export { Mapper, createMapper } from './mapper.js';
+export { Mapper } from './mapper.js';
 export { default } from './mapper.js';
+
+// Export new core classes
+export { InitMapper } from './core/init-mapper.js';
+export { Executor } from './core/executor.js';
+export { CrudBase } from './dml/crud-base.js';
+export { Migrator } from './ddl/migrator.js';
 
 export {
   StaticMapper,
@@ -100,4 +106,3 @@ export {
 
 export { Connector, mapper } from './connector.js';
 export { TableMigrator, ColumnBuilder } from './migrator.js';
-

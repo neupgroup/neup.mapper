@@ -1,53 +1,67 @@
 # API Reference
 
-### **Core Functions**
-- `connection()` → create connections registry (see `src/index.ts:299`–`301`)
-- `schema(conns?)` → create `SchemaManager` (see `src/index.ts:303`–`306`)
-- `schemas` → singleton `SchemaManager` (see `src/index.ts:308`–`311`)
-- `createOrm(adapter)` → wrapper around a `DbAdapter` (see `src/orm/index.ts:3`–`27`)
-- `parseConnectionsDsl(text)`, `toNormalizedConnections(map)` (see `src/env.ts:31`–`75`, `87`–`95`)
-- `documentationMd`, `markdownToHtml`, `getDocumentationHtml` (see `src/docs.ts:5`–`275`, `277`–`356`)
+The library exposes a single static class `Mapper` with four main methods.
 
-### **Configuration-Based API**
-- `createConfigMapper(config)` → Create mapper from configuration object
-- `createDefaultMapper()` → Create mapper with default configuration
-- `ConfigBasedMapper` → Class for configuration-based mapping
-  - `configure(config)` → Configure the mapper
-  - `makeConnection(name, type, config)` → Add connection
-  - `connection(name)` → Use specific connection
-  - `getConnection(name)` → Get connection details
+## `Mapper` Class
 
-### **Fluent API (StaticMapper)**
-- `StaticMapper.makeConnection(name, type, config)` → Create persistent connection
-- `StaticMapper.connection(name)` → Use existing connection
-- `StaticMapper.connection(config)` → Create temporary connection
-- `StaticMapper.getConnection(name)` → Get connection by name
-- `StaticMapper.listConnections()` → List all connections
+### `static init(): InitMapper`
+Returns the singleton `InitMapper` instance to manage connections.
 
-### **Schema Builder Methods (DDL)**
-- `schema(name)` → Define/Migrate schema structure
-- `structure(config)` → Define schema fields
-- `collection(name)` → Set underlying collection/table name
-- `exec()` → Execute deferred schema changes
+**Methods:**
+- `connect(name: string, type: string, config: any): void`
+  - Establishes a new connection.
+  - **name**: Unique name for the connection (use `'default'` for the primary one).
+  - **type**: Database type (`'sqlite'`, `'mysql'`, `'postgres'`, etc.).
+  - **config**: Adapter-specific configuration object.
 
-### **Query Builder Methods (DML)**
-- `query(name)` → Entry point for data operations
-- `table(name)` / `collection(name)` → Aliases for `query(name)`
-- `path(segment)` → Add path segment for API requests
-- `header(key, value)` / `headers(obj)` → Add custom headers for requests
-- `where(field, value, operator?)` → Add where condition for database queries
-- `orderBy(field, direction?)` → Add ordering
-- `limit(count)` → Limit results
-- `offset(count)` → Offset results
-- `get()` / `getOne()` → Execute query (GET request for API)
-- `post(data)` → Execute POST request with body
-- `put(data)` → Execute PUT request with body
-- `patch(data)` → Execute PATCH request with body
-- `delete()` → Execute delete operation or DELETE request
-- `insert(data)` → Alias for `add` / Database insertion
-- `add(data)` → Database insertion
+---
 
-### **Types**
-- `DbAdapter`, `QueryOptions`, `EnvDslConnections`, `NormalizedConnection`
-- `ConnectionConfig`, `MapperConfig`, `FluentConnectionBuilder`
-- `ConnectionType`: `'sql' | 'mysql' | 'postgres' | 'mongodb' | 'firestore' | 'api'`
+### `static base(tableName: string): CrudBase`
+Returns a `CrudBase` instance for performing DML (Data Manipulation Language) operations on a specific table.
+
+**Methods:**
+- `select(columns: string[] = ['*']): Promise<any[]>`
+  - Retrieves records from the table.
+- `insert(data: Record<string, any>): Promise<any>`
+  - Inserts a new record.
+- `update(data: Record<string, any>, where: Record<string, any>): Promise<any>`
+  - Updates records matching the `where` clause.
+- `delete(where: Record<string, any>): Promise<any>`
+  - Deletes records matching the `where` clause.
+
+---
+
+### `static migrator(): Migrator`
+Returns a `Migrator` instance for performing DDL (Data Definition Language) operations.
+
+**Methods:**
+- `create(tableName: string, schema: Record<string, string>): Promise<any>`
+  - Creates a new table with the specified schema.
+  - **schema**: Key-value pair of column name and SQL type definition (e.g., `{ id: 'INTEGER PRIMARY KEY' }`).
+- `update(tableName: string, schema: Record<string, string>): Promise<any>`
+  - Adds new columns to an existing table.
+  - Gracefully handles "duplicate column" errors for idempotency.
+- `drop(tableName: string): Promise<any>`
+  - Drops the specified table.
+- `truncate(tableName: string): Promise<any>`
+  - Removes all data from the table (via `DELETE FROM` or `TRUNCATE`).
+
+---
+
+### `static raw(sql: string): Executor`
+Returns an `Executor` instance for executing raw SQL queries.
+
+**Methods:**
+- `bind(bindings: any[] | any): Executor`
+  - Binds parameters to the SQL query (e.g., replace `?` or `$1`).
+- `execute(): Promise<any>`
+  - Executes the SQL query and returns the result.
+
+---
+
+## Architecture Overview
+
+- **InitMapper**: Singleton handling connection state.
+- **CrudBase**: Builder for standard CRUD queries. Delegates execution to `Executor`.
+- **Migrator**: Builder for Schema queries. Delegates execution to `Executor`.
+- **Executor**: Wraps the adapter execution logic, handling parameter binding and execution.

@@ -2,17 +2,32 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
+import { Mapper } from '../mapper.js';
+
+// Try to register ts-node for handling .ts files
+try {
+    // We need to use createRequire to import 'ts-node' in ESM context if we want to use register()
+    // Or just import it.
+    // Since we are in ESM (dist/cli/migrate.js), we can try import.
+    // But register() is synchronous?
+    // Let's rely on the user having ts-node or us providing it.
+    // We installed it in dependencies.
+    const { register } = await import('ts-node');
+    register({
+        compilerOptions: {
+            module: 'CommonJS' // Force CJS for migrations if possible, or ESM?
+            // Migrations use 'import { Mapper } ...', so they are ESM.
+            // If we set module: NodeNext, ts-node handles ESM.
+        },
+        esm: true // Enable ESM support
+    });
+} catch (e) {
+    console.warn('ts-node not found or failed to register. TypeScript migrations might fail.');
+}
 
 // Parse arguments
 const args = process.argv.slice(2);
-// Default command is to run all migrations ('run-all') if no command or just 'migrate'
-// Commands: 'refresh', 'up', 'down'
-// Usage:
-// npx migrate -> runs all up
-// npx migrate refresh -> down all, then up all
-// npx migrate up -> runs one up
-// npx migrate down -> runs one down
-
 let command = 'run-all';
 if (args[0] === 'refresh') command = 'refresh';
 else if (args[0] === 'up') command = 'up';
@@ -25,7 +40,7 @@ const migrationsDir = path.join(srcMapperDir, 'migrations');
 const connectionsFile = path.join(srcMapperDir, 'connections.ts');
 const logFile = path.join(srcMapperDir, 'logs.ts');
 
-// 1. Validate environment
+// Validate environment
 if (!fs.existsSync(migrationsDir)) {
     console.error(`Migrations directory not found at ${migrationsDir}`);
     process.exit(1);
@@ -36,49 +51,23 @@ if (!fs.existsSync(connectionsFile)) {
     process.exit(1);
 }
 
-// 2. Load Connections
-function loadConnections() {
-    const content = fs.readFileSync(connectionsFile, 'utf-8');
+// Load Connections
+async function loadConnections() {
+    // We can use dynamic import for connections.ts too!
     try {
-        const match = content.match(/export const connections = \s*(\[[\s\S]*\])\s*;?/);
-        if (!match) throw new Error("Could not find 'connections' array");
-        const connections = new Function(`return ${match[1]}`)();
-        if (!Array.isArray(connections)) throw new Error("Not an array");
-        return connections;
+        const fileUrl = pathToFileURL(connectionsFile).href;
+        const module = await import(fileUrl);
+        return module.connections;
     } catch (e) {
-        console.error("Connection files damaged, please fix the connections before working on the migration.");
+        console.error("Failed to load connections file:", e);
         process.exit(1);
     }
 }
 
-const connections = loadConnections();
-
-// 3. Helper to validate connection for a migration
-function validateConnection(migrationModule: any) {
-    const usesConnection = migrationModule.usesConnection;
-    let targetConnection;
-
-    if (usesConnection) {
-        targetConnection = connections.find((c: any) => c.name === usesConnection);
-        if (!targetConnection) {
-            console.error(`Connection '${usesConnection}' not found in connections file.`);
-            process.exit(1);
-        }
-    } else {
-        const defaults = connections.filter((c: any) => c.isDefault);
-        if (defaults.length !== 1) {
-            console.error("Connection files damaged, please fix the connections before working on the migration. (Multiple or no defaults found)");
-            process.exit(1);
-        }
-        targetConnection = defaults[0];
-    }
-    return targetConnection;
-}
-
-// 4. State Management (JSON-based Log)
+// State Management
 interface MigrationLogEntry {
     filename: string;
-    status: 'success' | 'failed' | 'ongoing'; // ongoing not strictly used yet but good for future
+    status: 'success' | 'failed';
     error?: string;
     timestamp: string;
     direction: 'up' | 'down';
@@ -88,12 +77,10 @@ function getMigrationLogs(): MigrationLogEntry[] {
     if (!fs.existsSync(logFile)) return [];
     try {
         const content = fs.readFileSync(logFile, 'utf-8');
-        // Extract array from "export const logs = [...]"
         const match = content.match(/export const logs = \s*(\[[\s\S]*\])\s*;?/);
         if (!match) return [];
         return JSON.parse(match[1]);
     } catch (e) {
-        console.warn("Warning: logs.ts is corrupted. Starting with empty state.");
         return [];
     }
 }
@@ -101,16 +88,12 @@ function getMigrationLogs(): MigrationLogEntry[] {
 function getExecutedMigrations(): string[] {
     const logs = getMigrationLogs();
     const executed: string[] = [];
-
     for (const entry of logs) {
         if (entry.status === 'success') {
-            if (entry.direction === 'up') {
-                executed.push(entry.filename);
-            } else if (entry.direction === 'down') {
+            if (entry.direction === 'up') executed.push(entry.filename);
+            else if (entry.direction === 'down') {
                 const index = executed.lastIndexOf(entry.filename);
-                if (index !== -1) {
-                    executed.splice(index, 1);
-                }
+                if (index !== -1) executed.splice(index, 1);
             }
         }
     }
@@ -119,48 +102,28 @@ function getExecutedMigrations(): string[] {
 
 function logAction(filename: string, action: 'up' | 'down', success: boolean, error?: any) {
     const logs = getMigrationLogs();
-    
     const entry: MigrationLogEntry = {
         filename: filename,
         status: success ? 'success' : 'failed',
         timestamp: new Date().toISOString(),
         direction: action
     };
-
-    if (!success && error) {
-        entry.error = error instanceof Error ? error.message : String(error);
-    }
-
+    if (!success && error) entry.error = error instanceof Error ? error.message : String(error);
     logs.push(entry);
-
     const fileContent = `export const logs = ${JSON.stringify(logs, null, 4)};\n`;
     fs.writeFileSync(logFile, fileContent);
-
-    if (success) {
-        console.log(`${filename}.${action} success`);
-    } else {
-        console.log(`${filename}.${action} failed`);
-        if (entry.error) console.error(`Error: ${entry.error}`);
-    }
+    if (success) console.log(`${filename} ${action} success`);
+    else console.error(`${filename} ${action} failed:`, entry.error);
 }
-
-// 5. Migration Discovery
-// Read files directly from src/mapper/migrations
-const migrationFiles = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.ts'))
-    .sort(); // Lexicographical sort (timestamp based)
-
-const executedState = getExecutedMigrations();
 
 async function runUp(filename: string) {
     console.log(`Migrating Up: ${filename}`);
     try {
         const migPath = path.join(migrationsDir, filename + '.ts');
-        const migration = await import(migPath);
+        const fileUrl = pathToFileURL(migPath).href;
+        const migration = await import(fileUrl);
         
-        validateConnection(migration);
-        
-        await migration.up();
+        if (migration.up) await migration.up();
         logAction(filename, 'up', true);
     } catch (e) {
         console.error(e);
@@ -173,11 +136,10 @@ async function runDown(filename: string) {
     console.log(`Migrating Down: ${filename}`);
     try {
         const migPath = path.join(migrationsDir, filename + '.ts');
-        const migration = await import(migPath);
+        const fileUrl = pathToFileURL(migPath).href;
+        const migration = await import(fileUrl);
         
-        validateConnection(migration);
-        
-        await migration.down();
+        if (migration.down) await migration.down();
         logAction(filename, 'down', true);
     } catch (e) {
         console.error(e);
@@ -186,54 +148,62 @@ async function runDown(filename: string) {
     }
 }
 
-async function main() {
+(async () => {
+    console.log(`CWD: ${process.cwd()}`);
+    console.log(`Migrations Dir: ${migrationsDir}`);
+
+    // Load and register connections
+    const connections = await loadConnections();
+    if (!Array.isArray(connections)) {
+        console.error("Connections export is not an array");
+        process.exit(1);
+    }
+
+    connections.forEach((conn: any) => {
+        try {
+            // Register as 'default' if isDefault is true, otherwise use name
+            const name = conn.isDefault ? 'default' : (conn.name || 'default');
+            Mapper.init().connect(name, conn.type, conn);
+            console.log(`Registered connection: ${name} (${conn.type})`);
+            
+            // Also register with original name if it differs, just in case
+            if (conn.isDefault && conn.name && conn.name !== 'default') {
+                 Mapper.init().connect(conn.name, conn.type, conn);
+            }
+        } catch (e) {
+            console.error(`Failed to register connection ${conn.name}:`, e);
+        }
+    });
+
+    const migrationFiles = fs.readdirSync(migrationsDir)
+        .filter(f => f.endsWith('.ts'))
+        .sort();
+        
+    const executedState = getExecutedMigrations();
+
     if (command === 'run-all') {
-        // Run all pending migrations
         for (const file of migrationFiles) {
             const name = file.replace('.ts', '');
-            if (!executedState.includes(name)) {
-                await runUp(name);
-            }
+            if (!executedState.includes(name)) await runUp(name);
         }
     } else if (command === 'up') {
-        // Run exactly ONE pending migration (the next one)
         for (const file of migrationFiles) {
             const name = file.replace('.ts', '');
             if (!executedState.includes(name)) {
                 await runUp(name);
-                break; // Only one
+                break;
             }
         }
     } else if (command === 'down') {
-        // Revert exactly ONE executed migration (the last one)
         const lastExecuted = executedState[executedState.length - 1];
-        if (lastExecuted) {
-            await runDown(lastExecuted);
-        } else {
-            console.log("No migrations to revert.");
-        }
+        if (lastExecuted) await runDown(lastExecuted);
+        else console.log("No migrations to revert.");
     } else if (command === 'refresh') {
-        // Down all executed (in reverse order), then Up all available
         const toRevert = [...executedState].reverse();
-        for (const name of toRevert) {
-            await runDown(name);
-        }
-        
-        // Reload state? We need to re-read it because runDown modified the file
-        // but our local variable 'executedState' is stale.
-        // Actually, runDown exits process on failure, so if we are here, all success.
-        // But runDown appends to log file. 'executedState' variable is not updated.
-        // However, we just want to run ALL migrations now.
-        // Since we reverted everything, logically executedState is empty.
-        
+        for (const name of toRevert) await runDown(name);
         for (const file of migrationFiles) {
             const name = file.replace('.ts', '');
             await runUp(name);
         }
     }
-}
-
-main().catch(e => {
-    console.error(e);
-    process.exit(1);
-});
+})();

@@ -1,44 +1,26 @@
-import { Connections } from './connections.js';
-import { SchemaManager } from './schema-manager.js';
-import { ConnectionType } from './types-core.js';
-import { BaseDispatcher } from './builders/base-dispatcher.js';
-import { SchemaDispatcher } from './builders/schema-builders.js';
-import { RawBuilder } from './builders/raw-builder.js';
-import { FluentConnectionSelector } from './fluent-mapper.js';
+import { CrudBase } from './dml/crud-base.js';
+import { Migrator } from './ddl/migrator.js';
+import { Executor } from './core/executor.js';
+import { InitMapper } from './core/init-mapper.js';
 export declare class Mapper {
-    private connections;
-    private schemaManager;
-    private static instance;
-    private configured;
-    constructor();
-    static getInstance(): Mapper;
-    static init(): Mapper;
-    static base(target: string): BaseDispatcher;
-    static connection(name: string): FluentConnectionSelector;
-    static query(target: string): BaseDispatcher;
-    static schema(name: string): SchemaDispatcher;
-    static raw(sql: string): RawBuilder;
-    static connect(name: string, type: ConnectionType, config: Record<string, any>): Mapper;
-    static discover(): Promise<any>;
-    static get(target: string): Promise<any>;
-    static add(target: string, data: any): Promise<any>;
-    autoConfigure(): this;
-    private detectEnvironmentConfig;
-    private inferConnectionType;
-    private applyConfig;
-    private applyDefaultConfig;
-    private createSchema;
-    connect(name: string, type: ConnectionType, config: Record<string, any>): this;
-    schema(name: string): ReturnType<SchemaManager['create']>;
-    use(schemaName: string): ReturnType<SchemaManager['use']>;
-    get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
-    getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
-    add(schemaName: string, data: Record<string, any>): Promise<any>;
-    update(schemaName: string, filters: Record<string, any>, data: Record<string, any>): Promise<void>;
-    delete(schemaName: string, filters: Record<string, any>): Promise<void>;
-    getConnections(): Connections;
-    getSchemaManager(): SchemaManager;
+    /**
+     * Entry point for Data Manipulation (CRUD).
+     * @param table Table name
+     */
+    static base(table: string): CrudBase;
+    /**
+     * Entry point for Schema Migration (DDL).
+     * @param table Optional table name. If provided, returns a fluent builder.
+     */
+    static migrator(table?: string): Migrator;
+    /**
+     * Entry point for Raw SQL.
+     */
+    static raw(sql: string): Executor;
+    /**
+     * Initialize connection manager.
+     */
+    static init(): InitMapper;
 }
-export declare const createMapper: () => Mapper;
-declare const _default: Mapper;
-export default _default;
+export declare const createMapper: () => InitMapper;
+export default Mapper;

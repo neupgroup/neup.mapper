@@ -62,7 +62,7 @@ export declare class ConfigBasedMapper {
     getSchemaManager(): SchemaManager;
     use(schemaName: string): any;
     schema(name: string): any;
-    connect(name: string, type: ConnectionType, config: Record<string, any>): import("./mapper.js").Mapper;
+    connect(name: string, type: ConnectionType, config: Record<string, any>): import("./index.js").InitMapper;
     get(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any>[]>;
     getOne(schemaName: string, filters?: Record<string, any>): Promise<Record<string, any> | null>;
     add(schemaName: string, data: Record<string, any>): Promise<any>;

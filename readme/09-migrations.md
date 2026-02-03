@@ -1,118 +1,113 @@
 # Database Migrations
 
-Neup.Mapper includes a comprehensive migration system that tracks changes to your database while keeping your local schema files in sync.
+Migrations in `@neupgroup/mapper` allow you to manage your database schema using version-controlled TypeScript files.
 
-## 🏗️ The Migration Lifecycle
+## CLI Tools
 
-1. **Create**: Use the CLI to generate a new migration file.
-2. **Define**: Add columns or alter tables in the generated file.
-3. **Execute**: Run the migration to apply changes to the DB and update local `src/schemas`.
+The library provides several CLI tools to help you manage migrations:
 
----
+*   `npx create-migration <name>`: Creates a new migration file.
+*   `npx migrate up`: Runs pending migrations.
+*   `npx migrate down`: Reverts the last executed migration.
+*   `npx create-schemas`: Generates/updates the `src/mapper/schemas.ts` file based on your migration files.
 
-## 💻 CLI Commands
+## Creating a Migration
 
-### **Create a Connection**
-Generate a connection template in `src/config`.
+To create a new migration, run:
+
 ```bash
-npm run create-connection <name> <type>
-# Example: npm run create-connection primary mysql
+npx create-migration add_users
 ```
 
-### **Create a Migration**
-Generate a timestamped migration file in `src/migration`.
-```bash
-npm run create-migration <tableName> [remarks]
-# Example: npm run create-migration users initial_schema
-```
+This will create a file in `src/mapper/migrations/` with the following structure:
 
-### **Run Migrations**
-Apply pending changes.
-```bash
-# Run all pending migrations
-npm run migrate-up
-
-# Run exactly 1 pending migration
-npm run migrate-up 1
-
-# Run next 2 pending migrations
-npm run migrate-up 2
-
-# Rollback the last migration (default)
-npm run migrate-down
-
-# Rollback the last 1 migration
-npm run migrate-down 1
-
-# Rollback the last 2 migrations
-npm run migrate-down 2
-```
-
----
-
-## 📝 Writing Migrations
-
-Migrations use a **deferred execution model**. You queue operations and they are applied only when you call `await migrator.exec()`.
-
-### **Creating a Table**
-```ts
-import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
+```typescript
+import { Mapper } from '@neupgroup/mapper';
 
 export async function up() {
-    const migrator = new TableMigrator('users');
-    
-    // Define columns
-    migrator.addColumn('id').type('int').autoIncrement().isPrimary();
-    migrator.addColumn('username').type('varchar').length(50).notNull();
-    migrator.addColumn('email').type('varchar').length(100).isUnique();
-    migrator.addColumn('bio').type('text');
-    
-    await migrator.exec(); // Creates DB table & updates schema file
+  const migrator = Mapper.migrator('users');
+  
+  await migrator.create()
+    .addColumn('id').type('int').autoIncrement().isPrimary()
+    .addColumn('name').type('string')
+    .addColumn('email').type('string').isUnique()
+    .addColumn('created_at').type('date').default('NOW()')
+    .exec();
 }
-```
-
-### **Altering a Table**
-```ts
-import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
-
-export async function up() {
-    const migrator = new TableMigrator('users');
-    
-    // Select existing column to modify
-    migrator.selectColumn('email').type('varchar').length(150).notNull();
-    
-    // Drop columns or constraints
-    migrator.dropColumn('bio');
-    migrator.dropUnique('email');
-
-    await migrator.exec();
-}
-```
-
-### **Dropping a Table**
-```ts
-import { TableMigrator } from '@neupgroup/mapper/dist/index.js';
 
 export async function down() {
-    const migrator = new TableMigrator('users');
-    await migrator.drop().exec(); // Drops DB table & schema file
+  const migrator = Mapper.migrator('users');
+  await migrator.drop().exec();
 }
 ```
 
----
+## Migration API
 
-## 🚀 Automatic Schemas
-As soon as you run a migration, the system automatically generates or updates the schema definition in `src/mapper/schemas`.
+The `Mapper.migrator(tableName)` returns a builder that supports the following commands:
 
-In your application code, simply call:
-```ts
-const users = await Mapper.schema('users').get();
+### Create Table
+
+Use `.create()` to start building a new table.
+
+```typescript
+await Mapper.migrator('products').create()
+    .addColumn('id').type('int').autoIncrement().isPrimary()
+    .addColumn('name').type('string')
+    .addColumn('price').type('number')
+    .exec();
 ```
 
----
+### Update Table
 
-## 🔍 Migration State
-The migration state is tracked in two places:
-1. **Registry**: `src/mapper/migrations/index.ts` lists all available migration files.
-2. **Execution State**: `.migration_state.json` (in `src/mapper` or root) tracks which migrations have been applied.
+Use `.update()` to modify an existing table (e.g., adding or dropping columns).
+
+```typescript
+await Mapper.migrator('products').update()
+    .addColumn('description').type('string')
+    .dropColumn('old_field')
+    .exec();
+```
+
+### Drop Table
+
+Use `.drop()` to remove a table.
+
+```typescript
+await Mapper.migrator('products').drop().exec();
+```
+
+### Truncate Table
+
+Use `.truncate()` to clear all data from a table.
+
+```typescript
+await Mapper.migrator('products').truncate().exec();
+```
+
+### Column Definitions
+
+When adding columns, you can chain various constraints:
+
+*   `.type(type)`: 'string', 'int', 'number', 'boolean', 'date', 'text'
+*   `.isPrimary()`: Marks column as Primary Key
+*   `.autoIncrement()`: Enables Auto Increment
+*   `.isUnique()`: Adds UNIQUE constraint
+*   `.notNull()`: Adds NOT NULL constraint
+*   `.default(value)`: Sets a default value
+*   `.length(number)`: Sets length for VARCHAR types
+
+## Schema Generation
+
+After writing your migrations, you should generate the static schema definitions used by the ORM/Mapper.
+
+Run the following command:
+
+```bash
+npm run create-schemas
+```
+(or `npx create-schemas`)
+
+This command scans all migration files and generates `src/mapper/schemas.ts`. This file contains the schema definitions that `Mapper` uses at runtime for query building and validation.
+
+**Note:** Unlike previous versions, `create-migration` does not automatically update the schema file. You must run `create-schemas` to sync your schema definitions with your migrations.
 

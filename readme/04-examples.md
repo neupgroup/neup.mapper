@@ -1,143 +1,61 @@
 # 🛠️ Complete Usage Examples
 
-### **Example 1: Zero-Configuration Setup**
+### **Example 1: Basic Setup**
 ```ts
-import Mapper from '@neupgroup/mapper'
+import { Mapper } from '@neupgroup/mapper';
 
-// Works immediately with in-memory storage
-const users = await Mapper.get('users') // Returns empty array
+// Connect to SQLite
+Mapper.init().connect('default', 'sqlite', { filename: './db.sqlite' });
+
+// Create Table
+await Mapper.migrator().create('products', {
+    id: 'INTEGER PRIMARY KEY AUTOINCREMENT',
+    name: 'TEXT',
+    price: 'REAL'
+});
+
+// Update Table (Add new column)
+await Mapper.migrator().update('products', {
+    description: 'TEXT'
+});
+
+// Add Data
+await Mapper.base('products').insert({ name: 'Laptop', price: 999.99 });
 ```
 
-### **Example 2: Environment-Based Configuration**
-```bash
-# Set environment variable
-export DATABASE_URL=mysql://user:password@localhost:3306/myapp
-
-# Or in browser
-window.__MAPPER_CONFIG__ = {
-  connection: {
-    name: 'mydb',
-    type: 'mysql',
-    key: { host: 'localhost', user: 'root', password: 'pass', database: 'myapp' }
-  }
-}
-```
-
+### **Example 2: CRUD Operations**
 ```ts
-import Mapper from '@neupgroup/mapper'
+// Select
+const expensive = await Mapper.base('products')
+    .select()
+    .where('price', 500, '>')
+    .get();
 
-// Automatically configured from environment
-const users = await Mapper.get('users')
+// Update
+await Mapper.base('products')
+    .update({ price: 899.99 })
+    .where('name', 'Laptop');
+
+// Delete
+await Mapper.base('products')
+    .delete()
+    .where('price', 100, '<');
 ```
 
-### **Example 3: Schema with Multiple Field Types**
+### **Example 3: Raw SQL**
 ```ts
-import Mapper from '@neupgroup/mapper'
-
-Mapper.schema('products')
-  .use({ connection: 'default', collection: 'products' })
-  .setStructure([
-    { name: 'id', type: 'int', autoIncrement: true },
-    { name: 'name', type: 'string' },
-    { name: 'price', type: 'number' },
-    { name: 'inStock', type: 'boolean' },
-    { name: 'createdAt', type: 'date' },
-    { name: 'categoryId', type: 'int' }
-  ])
-
-// Add product
-await Mapper.add('products', {
-  name: 'Laptop',
-  price: 999.99,
-  inStock: true,
-  createdAt: new Date(),
-  categoryId: 1
-})
-
-// Get products with filters
-const expensiveProducts = await Mapper.get('products', { price: 500 }, '>')
-const inStockProducts = await Mapper.get('products', { inStock: true })
+// Complex Join
+const report = await Mapper.raw(`
+    SELECT u.name, count(o.id) as orders 
+    FROM users u 
+    JOIN orders o ON u.id = o.user_id 
+    GROUP BY u.name
+`).execute();
 ```
 
-### **Example 4: Advanced Query Operations**
+### **Example 4: Migrations**
 ```ts
-import Mapper from '@neupgroup/mapper'
-
-// Complex queries using the underlying API
-const query = Mapper.use('users')
-  .where('age', 18, '>=')
-  .where('status', 'active')
-
-const activeAdults = await query.get()
-const firstActiveAdult = await query.getOne()
-
-// Update multiple records
-await query.to({ lastLogin: new Date() }).update()
-
-// Delete with complex conditions
-await Mapper.use('users')
-  .where('lastLogin', new Date('2023-01-01'), '<')
-  .delete()
+// Schema Management
+await Mapper.migrator().drop('old_table');
+await Mapper.migrator().truncate('logs');
 ```
-
-### **Example 5: Multiple Databases**
-```ts
-import Mapper from '@neupgroup/mapper'
-
-// Connect to multiple databases
-Mapper.connect('mysql_db', 'mysql', {
-  host: 'localhost',
-  user: 'root',
-  password: 'password',
-  database: 'main_app'
-})
-
-Mapper.connect('mongo_cache', 'mongodb', {
-  uri: 'mongodb://localhost:27017',
-  database: 'cache'
-})
-
-// Use different connections for different schemas
-Mapper.schema('users')
-  .use({ connection: 'mysql_db', collection: 'users' })
-  .setStructure([...])
-
-Mapper.schema('sessions')
-  .use({ connection: 'mongo_cache', collection: 'sessions' })
-  .setStructure([...])
-
-// Query from different databases
-const users = await Mapper.get('users')        // From MySQL
-const sessions = await Mapper.get('sessions')    // From MongoDB
-```
-
-### **Example 6: Fluent API Requests**
-```ts
-import Mapper from '@neupgroup/mapper'
-
-// Create a connection for an external API
-const api = Mapper.connection({ 
-  type: 'api', 
-  url: 'https://api.myapp.com' 
-})
-
-// Use path and HTTP methods fluently
-const profile = await api.path('/v1/me').get()
-
-// Send data with custom headers
-await api.path('/v1/posts')
-  .header('Authorization', 'Bearer my-token')
-  .header('X-Custom-Header', 'my-value')
-  .post({
-    title: 'New Post',
-    content: 'Hello World!'
-  })
-
-// Support for paths with multiple segments and multiple headers
-await api.path('/v1')
-  .path('/comments')
-  .header('X-Tag', 'news')
-  .header('X-Tag', 'alerts') // Appends to existing X-Tag
-  .get()
-```
-
