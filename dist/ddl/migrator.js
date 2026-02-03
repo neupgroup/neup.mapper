@@ -3,6 +3,11 @@ export class CreateTableBuilder {
     constructor(tableName) {
         this.tableName = tableName;
         this.columns = [];
+        this.connectionName = 'default';
+    }
+    useConnection(name) {
+        this.connectionName = name;
+        return this;
     }
     addColumn(name) {
         const col = new ColumnBuilder(name);
@@ -11,6 +16,7 @@ export class CreateTableBuilder {
     }
     async exec() {
         const migrator = new Migrator(this.tableName);
+        migrator.useConnection(this.connectionName);
         migrator._setCreateMode();
         for (const col of this.columns) {
             const def = col.getDefinition();
@@ -35,7 +41,13 @@ export class CreateTableBuilder {
 export class UpdateTableBuilder {
     constructor(tableName) {
         this.tableName = tableName;
+        this.connectionName = 'default';
         this.migrator = new Migrator(tableName);
+    }
+    useConnection(name) {
+        this.connectionName = name;
+        this.migrator.useConnection(name);
+        return this;
     }
     addColumn(name) {
         return this.migrator._addColumn(name);
@@ -51,9 +63,15 @@ export class UpdateTableBuilder {
 export class DropTableBuilder {
     constructor(tableName) {
         this.tableName = tableName;
+        this.connectionName = 'default';
+    }
+    useConnection(name) {
+        this.connectionName = name;
+        return this;
     }
     async exec() {
         const migrator = new Migrator(this.tableName);
+        migrator.useConnection(this.connectionName);
         migrator._dropTable();
         await migrator.exec();
     }
@@ -61,10 +79,15 @@ export class DropTableBuilder {
 export class TruncateTableBuilder {
     constructor(tableName) {
         this.tableName = tableName;
+        this.connectionName = 'default';
+    }
+    useConnection(name) {
+        this.connectionName = name;
+        return this;
     }
     async exec() {
         const sql = `DELETE FROM ${this.tableName}`;
-        await new Executor(sql).execute();
+        await new Executor(sql).useConnection(this.connectionName).execute();
     }
 }
 export class ColumnBuilder {
@@ -99,6 +122,9 @@ export class ColumnBuilder {
     isUnique() {
         this.def.isUnique = true;
         return this;
+    }
+    unique() {
+        return this.isUnique();
     }
     notNull() {
         this.def.notNull = true;
@@ -149,9 +175,14 @@ export class Migrator {
         this.columns = [];
         this.actions = [];
         this.isCreateMode = false;
+        this.connectionName = 'default';
     }
     _setCreateMode() {
         this.isCreateMode = true;
+    }
+    useConnection(name) {
+        this.connectionName = name;
+        return this;
     }
     create(tableNameOrUndefined, schema) {
         if (typeof tableNameOrUndefined === 'string' && schema) {
@@ -159,7 +190,7 @@ export class Migrator {
         }
         if (!this.tableName)
             throw new Error("Table name is required for create()");
-        return new CreateTableBuilder(this.tableName);
+        return new CreateTableBuilder(this.tableName).useConnection(this.connectionName);
     }
     update(tableNameOrUndefined, schema) {
         if (typeof tableNameOrUndefined === 'string' && schema) {
@@ -167,7 +198,7 @@ export class Migrator {
         }
         if (!this.tableName)
             throw new Error("Table name is required for update()");
-        return new UpdateTableBuilder(this.tableName);
+        return new UpdateTableBuilder(this.tableName).useConnection(this.connectionName);
     }
     drop(tableNameOrUndefined) {
         if (typeof tableNameOrUndefined === 'string') {
@@ -175,7 +206,7 @@ export class Migrator {
         }
         if (!this.tableName)
             throw new Error("Table name is required for drop()");
-        return new DropTableBuilder(this.tableName);
+        return new DropTableBuilder(this.tableName).useConnection(this.connectionName);
     }
     truncate(tableNameOrUndefined) {
         if (typeof tableNameOrUndefined === 'string') {
@@ -183,7 +214,7 @@ export class Migrator {
         }
         if (!this.tableName)
             throw new Error("Table name is required for truncate()");
-        return new TruncateTableBuilder(this.tableName);
+        return new TruncateTableBuilder(this.tableName).useConnection(this.connectionName);
     }
     // --- Internal Helpers for Builders ---
     // These are now internal or accessed via builders, not directly by user
@@ -225,13 +256,13 @@ export class Migrator {
         this.tableName = tableName;
         const columns = Object.entries(schema).map(([c, t]) => `${c} ${t}`).join(', ');
         const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${columns})`;
-        await new Executor(sql).execute();
+        await new Executor(sql).useConnection(this.connectionName).execute();
     }
     async legacyUpdate(tableName, schema) {
         for (const [column, type] of Object.entries(schema)) {
             const sql = `ALTER TABLE ${tableName} ADD COLUMN ${column} ${type}`;
             try {
-                await new Executor(sql).execute();
+                await new Executor(sql).useConnection(this.connectionName).execute();
             }
             catch (error) {
                 // Ignore duplicate column errors
@@ -240,11 +271,11 @@ export class Migrator {
     }
     async legacyDrop(tableName) {
         const sql = `DROP TABLE IF EXISTS ${tableName}`;
-        await new Executor(sql).execute();
+        await new Executor(sql).useConnection(this.connectionName).execute();
     }
     async legacyTruncate(tableName) {
         const sql = `DELETE FROM ${tableName}`;
-        return new Executor(sql).execute();
+        return new Executor(sql).useConnection(this.connectionName).execute();
     }
     // --- Execution ---
     generateColumnSql(col, type) {
@@ -299,8 +330,10 @@ export class Migrator {
         const { InitMapper } = await import('../core/init-mapper.js');
         // Get connection details to know DB type
         const initMapper = InitMapper.getInstance();
-        // Assuming default connection for now as per previous implementation
-        const conn = initMapper.getConnections().get('default');
+        const conn = initMapper.getConnections().get(this.connectionName);
+        if (!conn) {
+            throw new Error(`Connection '${this.connectionName}' not found.`);
+        }
         const type = (conn === null || conn === void 0 ? void 0 : conn.type) || 'sqlite'; // Default to sqlite if not found
         const quote = (type === 'postgres' || type === 'sql') ? '"' : '`';
         if (this.isCreateMode && this.columns.length > 0) {
@@ -308,7 +341,7 @@ export class Migrator {
             createSql += this.columns.map(c => '  ' + this.generateColumnSql(c.getDefinition(), type)).join(',\n');
             createSql += '\n)';
             try {
-                await new Executor(createSql).execute();
+                await new Executor(createSql).useConnection(this.connectionName).execute();
             }
             catch (e) {
                 console.error("Create Table Failed:", e.message);
@@ -350,7 +383,7 @@ export class Migrator {
                 }
                 if (sql) {
                     try {
-                        await new Executor(sql).execute();
+                        await new Executor(sql).useConnection(this.connectionName).execute();
                     }
                     catch (err) {
                         console.error(`Migration Action Failed: ${err.message}`);

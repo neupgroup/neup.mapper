@@ -4,16 +4,20 @@ import * as path from 'path';
 // Parse arguments
 const args = process.argv.slice(2);
 const migrationName = args[0];
-if (!migrationName) {
+const connIndex = args.indexOf('--conn');
+let connectionName = '';
+if (connIndex !== -1 && args[connIndex + 1]) {
+    connectionName = args[connIndex + 1];
+}
+if (!migrationName || migrationName.startsWith('--')) {
     console.error('Please provide a migration name.');
-    console.error('Usage: npm run create-migration <name>');
+    console.error('Usage: npm run create-migration <name> [--conn <connectionName>]');
     process.exit(1);
 }
 // Ensure directories exist
 const mapperDir = path.resolve(process.cwd(), 'src/mapper');
-const migrationsDir = path.join(mapperDir, 'migrations');
 const schemasDir = path.join(mapperDir, 'schemas');
-[mapperDir, migrationsDir, schemasDir].forEach(dir => {
+[mapperDir, schemasDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
@@ -21,25 +25,43 @@ const schemasDir = path.join(mapperDir, 'schemas');
 // Generate timestamp: YYYYMMDDHHMMSS
 const now = new Date();
 const timestamp = now.toISOString().replace(/[-T:.]/g, '').substring(0, 14);
-const fileName = `${timestamp}_${migrationName}.ts`;
-const filePath = path.join(migrationsDir, fileName);
-// Migration template
-const template = `import { Mapper } from '@neupgroup/mapper';
+const fullName = `${timestamp}_${migrationName}`;
+const migrationsFile = path.join(mapperDir, 'migrations.ts');
+const newMigration = `
+  {
+    name: '${fullName}',${connectionName ? `\n    usesConnection: '${connectionName}',` : ''}
+    async up() {
+      const migrator = Mapper.migrator('${migrationName}')${connectionName ? `.useConnection('${connectionName}')` : ''};
+      // await migrator.create()
+      //   .addColumn('id').type('int').autoIncrement().isPrimary()
+      //   .addColumn('created_at').type('date').default('NOW()')
+      //   .exec();
+    },
+    async down() {
+      const migrator = Mapper.migrator('${migrationName}')${connectionName ? `.useConnection('${connectionName}')` : ''};
+      // await migrator.drop().exec();
+    }
+  },`;
+if (!fs.existsSync(migrationsFile)) {
+    const content = `import { Mapper } from '@neupgroup/mapper';
 
-export async function up() {
-  const migrator = Mapper.migrator('${migrationName}');
-  
-  // Use create() or update() to get a builder
-  // await migrator.create()
-  //   .addColumn('id').type('int').autoIncrement().isPrimary()
-  //   .addColumn('created_at').type('date').default('NOW()')
-  //   .exec();
-}
-
-export async function down() {
-  const migrator = Mapper.migrator('${migrationName}');
-  // await migrator.drop().exec();
-}
+export const migrations = [
+${newMigration}
+];
 `;
-fs.writeFileSync(filePath, template);
-console.log(`Created migration: ${filePath}`);
+    fs.writeFileSync(migrationsFile, content);
+    console.log(`Created migrations file: ${migrationsFile}`);
+}
+else {
+    let content = fs.readFileSync(migrationsFile, 'utf-8');
+    const lastBracketIndex = content.lastIndexOf(']');
+    if (lastBracketIndex !== -1) {
+        content = content.slice(0, lastBracketIndex) + newMigration + '\n' + content.slice(lastBracketIndex);
+        fs.writeFileSync(migrationsFile, content);
+        console.log(`Added migration '${fullName}' to ${migrationsFile}`);
+    }
+    else {
+        console.error(`Could not parse ${migrationsFile}. Ensure it exports a 'migrations' array.`);
+        process.exit(1);
+    }
+}

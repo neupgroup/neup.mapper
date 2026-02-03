@@ -6,6 +6,7 @@ export class InitMapper {
     private static instance: InitMapper;
     private connections: Connections;
     private schemaManager: SchemaManager;
+    private registeredSchemas: Record<string, any> = {};
 
     private constructor() {
         this.connections = new Connections();
@@ -39,5 +40,14 @@ export class InitMapper {
 
     use(name: string) {
         return this.schemaManager.use(name);
+    }
+    
+    loadSchemas(schemas: Record<string, any>): this {
+        this.registeredSchemas = { ...this.registeredSchemas, ...schemas };
+        return this;
+    }
+    
+    getSchemaDef(tableName: string): any {
+        return this.registeredSchemas[tableName];
     }
 }

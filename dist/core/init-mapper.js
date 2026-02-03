@@ -3,6 +3,7 @@ import { SchemaManager } from '../schema-manager.js';
 import { autoAttachAdapter } from '../adapters/index.js';
 export class InitMapper {
     constructor() {
+        this.registeredSchemas = {};
         this.connections = new Connections();
         this.schemaManager = new SchemaManager(this.connections);
     }
@@ -28,5 +29,12 @@ export class InitMapper {
     }
     use(name) {
         return this.schemaManager.use(name);
+    }
+    loadSchemas(schemas) {
+        this.registeredSchemas = { ...this.registeredSchemas, ...schemas };
+        return this;
+    }
+    getSchemaDef(tableName) {
+        return this.registeredSchemas[tableName];
     }
 }

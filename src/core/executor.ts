@@ -2,6 +2,7 @@ import { InitMapper } from './init-mapper.js';
 
 export class Executor {
     private _bindings: any[] = [];
+    private _connectionName: string = 'default';
 
     constructor(private sql: string) {}
 
@@ -9,16 +10,19 @@ export class Executor {
         this._bindings = Array.isArray(bindings) ? bindings : [bindings];
         return this;
     }
+    
+    useConnection(name: string): this {
+        this._connectionName = name;
+        return this;
+    }
 
     async execute(): Promise<any> {
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
-        const conn = connections.get('default');
+        const conn = connections.get(this._connectionName);
         
         if (!conn) {
-             // Try to find any connection if default is not set?
-             // For now strict default.
-             throw new Error("No default connection found. Please connect using InitMapper or Mapper.init().");
+             throw new Error(`Connection '${this._connectionName}' not found.`);
         }
         
         const adapter = connections.getAdapter(conn.name);

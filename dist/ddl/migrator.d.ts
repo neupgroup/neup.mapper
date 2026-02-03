@@ -4,26 +4,34 @@ export interface DdlExecutor {
 export declare class CreateTableBuilder implements DdlExecutor {
     private tableName;
     private columns;
+    private connectionName;
     constructor(tableName: string);
+    useConnection(name: string): this;
     addColumn(name: string): ColumnBuilder;
     exec(): Promise<void>;
 }
 export declare class UpdateTableBuilder implements DdlExecutor {
     private tableName;
     private migrator;
+    private connectionName;
     constructor(tableName: string);
+    useConnection(name: string): this;
     addColumn(name: string): ColumnBuilder;
     dropColumn(name: string): this;
     exec(): Promise<void>;
 }
 export declare class DropTableBuilder implements DdlExecutor {
     private tableName;
+    private connectionName;
     constructor(tableName: string);
+    useConnection(name: string): this;
     exec(): Promise<void>;
 }
 export declare class TruncateTableBuilder implements DdlExecutor {
     private tableName;
+    private connectionName;
     constructor(tableName: string);
+    useConnection(name: string): this;
     exec(): Promise<void>;
 }
 export type ColumnType = 'string' | 'number' | 'boolean' | 'date' | 'int';
@@ -36,6 +44,7 @@ export declare class ColumnBuilder {
     length(len: number): this;
     isPrimary(): this;
     isUnique(): this;
+    unique(): this;
     notNull(): this;
     isNullable(): this;
     autoIncrement(): this;
@@ -52,8 +61,10 @@ export declare class Migrator {
     private columns;
     private actions;
     private isCreateMode;
+    private connectionName;
     constructor(tableName?: string | undefined);
     _setCreateMode(): void;
+    useConnection(name: string): this;
     create(): CreateTableBuilder;
     create(tableName: string, schema: Record<string, string>): Promise<any>;
     update(): UpdateTableBuilder;

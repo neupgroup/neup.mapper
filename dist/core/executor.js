@@ -3,19 +3,22 @@ export class Executor {
     constructor(sql) {
         this.sql = sql;
         this._bindings = [];
+        this._connectionName = 'default';
     }
     bind(bindings) {
         this._bindings = Array.isArray(bindings) ? bindings : [bindings];
         return this;
     }
+    useConnection(name) {
+        this._connectionName = name;
+        return this;
+    }
     async execute() {
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
-        const conn = connections.get('default');
+        const conn = connections.get(this._connectionName);
         if (!conn) {
-            // Try to find any connection if default is not set?
-            // For now strict default.
-            throw new Error("No default connection found. Please connect using InitMapper or Mapper.init().");
+            throw new Error(`Connection '${this._connectionName}' not found.`);
         }
         const adapter = connections.getAdapter(conn.name);
         if (!adapter)

@@ -19,26 +19,31 @@ To create a new migration, run:
 npx create-migration add_users
 ```
 
-This will create a file in `src/mapper/migrations/` with the following structure:
+This will append a new migration object to `src/mapper/migrations.ts`. All migrations are stored in this single file as an array:
 
 ```typescript
 import { Mapper } from '@neupgroup/mapper';
 
-export async function up() {
-  const migrator = Mapper.migrator('users');
-  
-  await migrator.create()
-    .addColumn('id').type('int').autoIncrement().isPrimary()
-    .addColumn('name').type('string')
-    .addColumn('email').type('string').isUnique()
-    .addColumn('created_at').type('date').default('NOW()')
-    .exec();
-}
-
-export async function down() {
-  const migrator = Mapper.migrator('users');
-  await migrator.drop().exec();
-}
+export const migrations = [
+  {
+    name: '202602040001_add_users',
+    async up() {
+      const migrator = Mapper.migrator('users').create();
+      
+      migrator.addColumn('id').type('int').autoIncrement().isPrimary();
+      migrator.addColumn('name').type('string');
+      migrator.addColumn('email').type('string').unique();
+      migrator.addColumn('created_at').type('date').default('NOW()');
+      
+      await migrator.exec();
+    },
+    async down() {
+      const migrator = Mapper.migrator('users').drop();
+      await migrator.exec();
+    }
+  },
+  // ... other migrations
+];
 ```
 
 ## Migration API

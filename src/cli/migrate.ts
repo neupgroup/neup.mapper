@@ -7,20 +7,12 @@ import { Mapper } from '../mapper.js';
 
 // Try to register ts-node for handling .ts files
 try {
-    // We need to use createRequire to import 'ts-node' in ESM context if we want to use register()
-    // Or just import it.
-    // Since we are in ESM (dist/cli/migrate.js), we can try import.
-    // But register() is synchronous?
-    // Let's rely on the user having ts-node or us providing it.
-    // We installed it in dependencies.
     const { register } = await import('ts-node');
     register({
         compilerOptions: {
-            module: 'CommonJS' // Force CJS for migrations if possible, or ESM?
-            // Migrations use 'import { Mapper } ...', so they are ESM.
-            // If we set module: NodeNext, ts-node handles ESM.
+            module: 'CommonJS' 
         },
-        esm: true // Enable ESM support
+        esm: true 
     });
 } catch (e) {
     console.warn('ts-node not found or failed to register. TypeScript migrations might fail.');
@@ -36,16 +28,11 @@ else if (args[0] === 'down') command = 'down';
 // Determine paths
 const cwd = process.cwd();
 const srcMapperDir = path.join(cwd, 'src/mapper');
-const migrationsDir = path.join(srcMapperDir, 'migrations');
+const migrationsFile = path.join(srcMapperDir, 'migrations.ts');
 const connectionsFile = path.join(srcMapperDir, 'connections.ts');
 const logFile = path.join(srcMapperDir, 'logs.ts');
 
 // Validate environment
-if (!fs.existsSync(migrationsDir)) {
-    console.error(`Migrations directory not found at ${migrationsDir}`);
-    process.exit(1);
-}
-
 if (!fs.existsSync(connectionsFile)) {
     console.error(`Connections file not found at ${connectionsFile}`);
     process.exit(1);
@@ -53,13 +40,28 @@ if (!fs.existsSync(connectionsFile)) {
 
 // Load Connections
 async function loadConnections() {
-    // We can use dynamic import for connections.ts too!
     try {
         const fileUrl = pathToFileURL(connectionsFile).href;
         const module = await import(fileUrl);
         return module.connections;
     } catch (e) {
         console.error("Failed to load connections file:", e);
+        process.exit(1);
+    }
+}
+
+// Load Migrations
+async function loadMigrations() {
+    if (!fs.existsSync(migrationsFile)) {
+        console.error(`Migrations file not found at ${migrationsFile}`);
+        process.exit(1);
+    }
+    try {
+        const fileUrl = pathToFileURL(migrationsFile).href;
+        const module = await import(fileUrl);
+        return module.migrations;
+    } catch (e) {
+        console.error("Failed to load migrations file:", e);
         process.exit(1);
     }
 }
@@ -116,41 +118,33 @@ function logAction(filename: string, action: 'up' | 'down', success: boolean, er
     else console.error(`${filename} ${action} failed:`, entry.error);
 }
 
-async function runUp(filename: string) {
-    console.log(`Migrating Up: ${filename}`);
+async function runUp(migration: any) {
+    console.log(`Migrating Up: ${migration.name}`);
     try {
-        const migPath = path.join(migrationsDir, filename + '.ts');
-        const fileUrl = pathToFileURL(migPath).href;
-        const migration = await import(fileUrl);
-        
         if (migration.up) await migration.up();
-        logAction(filename, 'up', true);
+        logAction(migration.name, 'up', true);
     } catch (e) {
         console.error(e);
-        logAction(filename, 'up', false, e);
+        logAction(migration.name, 'up', false, e);
         process.exit(1);
     }
 }
 
-async function runDown(filename: string) {
-    console.log(`Migrating Down: ${filename}`);
+async function runDown(migration: any) {
+    console.log(`Migrating Down: ${migration.name}`);
     try {
-        const migPath = path.join(migrationsDir, filename + '.ts');
-        const fileUrl = pathToFileURL(migPath).href;
-        const migration = await import(fileUrl);
-        
         if (migration.down) await migration.down();
-        logAction(filename, 'down', true);
+        logAction(migration.name, 'down', true);
     } catch (e) {
         console.error(e);
-        logAction(filename, 'down', false, e);
+        logAction(migration.name, 'down', false, e);
         process.exit(1);
     }
 }
 
 (async () => {
     console.log(`CWD: ${process.cwd()}`);
-    console.log(`Migrations Dir: ${migrationsDir}`);
+    console.log(`Migrations File: ${migrationsFile}`);
 
     // Load and register connections
     const connections = await loadConnections();
@@ -161,12 +155,10 @@ async function runDown(filename: string) {
 
     connections.forEach((conn: any) => {
         try {
-            // Register as 'default' if isDefault is true, otherwise use name
             const name = conn.isDefault ? 'default' : (conn.name || 'default');
             Mapper.init().connect(name, conn.type, conn);
             console.log(`Registered connection: ${name} (${conn.type})`);
             
-            // Also register with original name if it differs, just in case
             if (conn.isDefault && conn.name && conn.name !== 'default') {
                  Mapper.init().connect(conn.name, conn.type, conn);
             }
@@ -175,35 +167,40 @@ async function runDown(filename: string) {
         }
     });
 
-    const migrationFiles = fs.readdirSync(migrationsDir)
-        .filter(f => f.endsWith('.ts'))
-        .sort();
-        
+    const migrations = await loadMigrations();
     const executedState = getExecutedMigrations();
 
     if (command === 'run-all') {
-        for (const file of migrationFiles) {
-            const name = file.replace('.ts', '');
-            if (!executedState.includes(name)) await runUp(name);
+        for (const m of migrations) {
+            if (!executedState.includes(m.name)) await runUp(m);
         }
     } else if (command === 'up') {
-        for (const file of migrationFiles) {
-            const name = file.replace('.ts', '');
-            if (!executedState.includes(name)) {
-                await runUp(name);
+        for (const m of migrations) {
+            if (!executedState.includes(m.name)) {
+                await runUp(m);
                 break;
             }
         }
     } else if (command === 'down') {
-        const lastExecuted = executedState[executedState.length - 1];
-        if (lastExecuted) await runDown(lastExecuted);
-        else console.log("No migrations to revert.");
+        const lastExecutedName = executedState[executedState.length - 1];
+        if (lastExecutedName) {
+            const m = migrations.find((m: any) => m.name === lastExecutedName);
+            if (m) await runDown(m);
+            else {
+                console.error(`Migration ${lastExecutedName} recorded but not found in migrations file.`);
+                // If not found, maybe just log action as down? But we can't execute down logic.
+            }
+        } else {
+             console.log("No migrations to revert.");
+        }
     } else if (command === 'refresh') {
         const toRevert = [...executedState].reverse();
-        for (const name of toRevert) await runDown(name);
-        for (const file of migrationFiles) {
-            const name = file.replace('.ts', '');
-            await runUp(name);
+        for (const name of toRevert) {
+            const m = migrations.find((m: any) => m.name === name);
+            if (m) await runDown(m);
+        }
+        for (const m of migrations) {
+            await runUp(m);
         }
     }
 })();

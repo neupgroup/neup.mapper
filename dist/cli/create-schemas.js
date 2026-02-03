@@ -6,6 +6,7 @@ import { pathToFileURL } from 'url';
 import { Mapper } from '../mapper.js';
 import { Migrator, CreateTableBuilder, UpdateTableBuilder, DropTableBuilder, TruncateTableBuilder, ColumnBuilder } from '../ddl/migrator.js';
 const schemas = {};
+let currentConnection;
 class MockColumnBuilder extends ColumnBuilder {
     constructor(name, mockMigrator) {
         super(name); // No parent migrator passed to avoid side effects if any
@@ -17,6 +18,14 @@ class MockCreateTableBuilder extends CreateTableBuilder {
         super(mockTableName);
         this.mockTableName = mockTableName;
         this.mockColumns = [];
+        // connectionName is inherited from CreateTableBuilder (string, default 'default')
+        // But we need to detect if it was changed or if we should use global currentConnection.
+        this.hasCustomConnection = false;
+    }
+    useConnection(name) {
+        super.useConnection(name);
+        this.hasCustomConnection = true;
+        return this;
     }
     addColumn(name) {
         const col = new ColumnBuilder(name);
@@ -45,6 +54,16 @@ class MockCreateTableBuilder extends CreateTableBuilder {
             fields: fields,
             collection: this.mockTableName
         };
+        // Priority: 1. Explicit .useConnection() in builder 2. Global currentConnection (from migration file)
+        if (this.hasCustomConnection) {
+            // We can access 'connectionName' from parent because it's private in parent?
+            // Actually it is private in CreateTableBuilder in src/ddl/migrator.ts.
+            // So we can't access it here unless we change visibility or use 'any'.
+            schemas[this.mockTableName].usesConnection = this.connectionName;
+        }
+        else if (currentConnection) {
+            schemas[this.mockTableName].usesConnection = currentConnection;
+        }
     }
 }
 class MockUpdateTableBuilder extends UpdateTableBuilder {
@@ -53,6 +72,12 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
         this.mockTableName = mockTableName;
         this.mockColumns = [];
         this.droppedColumns = [];
+        this.hasCustomConnection = false;
+    }
+    useConnection(name) {
+        super.useConnection(name);
+        this.hasCustomConnection = true;
+        return this;
     }
     addColumn(name) {
         const col = new ColumnBuilder(name);
@@ -97,11 +122,19 @@ class MockDropTableBuilder extends DropTableBuilder {
         super(mockTableName);
         this.mockTableName = mockTableName;
     }
+    useConnection(name) {
+        super.useConnection(name);
+        return this;
+    }
     async exec() {
         delete schemas[this.mockTableName];
     }
 }
 class MockTruncateTableBuilder extends TruncateTableBuilder {
+    useConnection(name) {
+        super.useConnection(name);
+        return this;
+    }
     async exec() {
         // No schema change
     }
@@ -162,10 +195,10 @@ Mapper.migrator = (tableName) => {
 (async () => {
     console.log("Generating schemas from migrations...");
     const cwd = process.cwd();
-    const migrationsDir = path.resolve(cwd, 'src/mapper/migrations');
+    const migrationsFile = path.resolve(cwd, 'src/mapper/migrations.ts');
     const schemasFile = path.resolve(cwd, 'src/mapper/schemas.ts');
-    if (!fs.existsSync(migrationsDir)) {
-        console.error("No migrations directory found.");
+    if (!fs.existsSync(migrationsFile)) {
+        console.error("No migrations file found.");
         process.exit(1);
     }
     // Try to register ts-node for handling .ts files
@@ -180,21 +213,22 @@ Mapper.migrator = (tableName) => {
     catch (e) {
         // console.warn('ts-node not found. Assuming compiled JS or native TS support.');
     }
-    const files = fs.readdirSync(migrationsDir).sort(); // Chronological order is crucial!
-    for (const file of files) {
-        if (!file.endsWith('.ts') && !file.endsWith('.js'))
-            continue;
-        const filePath = path.join(migrationsDir, file);
-        try {
-            const fileUrl = pathToFileURL(filePath).href;
-            const migration = await import(fileUrl);
-            if (migration.up) {
-                await migration.up();
+    try {
+        const fileUrl = pathToFileURL(migrationsFile).href;
+        const module = await import(fileUrl);
+        const migrations = module.migrations;
+        if (Array.isArray(migrations)) {
+            for (const migration of migrations) {
+                if (migration.up) {
+                    currentConnection = migration.usesConnection;
+                    await migration.up();
+                    currentConnection = undefined;
+                }
             }
         }
-        catch (e) {
-            console.error(`Error processing migration ${file}:`, e);
-        }
+    }
+    catch (e) {
+        console.error(`Error processing migrations:`, e);
     }
     // Generate schemas.ts content
     let content = `export const schemas: Record<string, any> = {};\n\n`;
