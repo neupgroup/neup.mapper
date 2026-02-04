@@ -153,6 +153,12 @@ export class SchemaQuery {
             const [field, v] = fieldOrPair;
             this.filters.push({ field, operator: '=', value: v });
         }
+        else if (typeof fieldOrPair === 'object' && fieldOrPair !== null) {
+            // Support object style where({ a: 1, b: 2 })
+            Object.entries(fieldOrPair).forEach(([field, v]) => {
+                this.filters.push({ field, operator: '=', value: v });
+            });
+        }
         else {
             const field = fieldOrPair;
             this.filters.push({ field, operator: operator !== null && operator !== void 0 ? operator : '=', value });
@@ -183,9 +189,13 @@ export class SchemaQuery {
         this.cachedAdapter = adapter;
         return adapter;
     }
-    to(update) {
+    set(update) {
         this.pendingUpdate = update;
         return this;
+    }
+    // Deprecated alias kept for backward compatibility if needed, or remove if strictly following request
+    to(update) {
+        return this.set(update);
     }
     async get() {
         const adapter = this.getAdapter();
@@ -228,13 +238,16 @@ export class SchemaQuery {
         }
         return adapter.addDocument(this.def.collectionName, data);
     }
+    async insert(data) {
+        return this.add(data);
+    }
     async delete() {
         const adapter = this.getAdapter();
         if (!this.def.massDeleteAllowed && this.filters.length === 0 && !this._limit) {
             this._limit = 1;
         }
         if (this.def.deleteType === 'softDelete') {
-            return this.to({ deletedOn: new Date() }).update();
+            return this.set({ deletedOn: new Date() }).update();
         }
         const docs = await this.get();
         for (const d of docs) {
@@ -248,14 +261,22 @@ export class SchemaQuery {
         this._limit = 1;
         return this.delete();
     }
-    async update() {
+    async update(data) {
         const adapter = this.getAdapter();
+        // Allow passing data directly to update()
+        if (data) {
+            this.pendingUpdate = data;
+        }
         if (!this.pendingUpdate)
             throw new UpdatePayloadMissingError();
-        let data = this.pendingUpdate;
+        let updateData = this.pendingUpdate;
         if (this.def.updatableFields) {
             const allowed = new Set(this.def.updatableFields);
-            data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+            updateData = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.has(k)));
+        }
+        else if (!this.def.allowUndefinedFields) {
+            // Enforce strict schema if not explicitly allowed undefined fields
+            updateData = Object.fromEntries(Object.entries(updateData).filter(([k]) => this.allowedFields.has(k)));
         }
         if (!this.def.massEditAllowed && this.filters.length === 0 && !this._limit) {
             this._limit = 1;
@@ -265,12 +286,12 @@ export class SchemaQuery {
             const id = d.id;
             if (!id)
                 throw new DocumentMissingIdError('update');
-            await adapter.updateDocument(this.def.collectionName, id, data);
+            await adapter.updateDocument(this.def.collectionName, id, updateData);
         }
     }
-    async updateOne() {
+    async updateOne(data) {
         this._limit = 1;
-        return this.update();
+        return this.update(data);
     }
 }
 export class SchemaManager {

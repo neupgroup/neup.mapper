@@ -4,6 +4,7 @@ The Fluent API in `@neupgroup/mapper` has been simplified to 4 core commands.
 
 ## Table of Contents
 - [Initialization](#initialization)
+- [Schema Operations (Validated)](#schema-operations-validated)
 - [Database Operations (DML)](#database-operations-dml)
 - [Migrations (DDL)](#migrations-ddl)
 - [Raw Queries](#raw-queries)
@@ -12,8 +13,9 @@ The Fluent API in `@neupgroup/mapper` has been simplified to 4 core commands.
 
 ## Initialization
 
-You start by initializing the mapper and setting up connections.
+You can initialize the mapper manually or rely on a `mapper.config.json` file for auto-initialization.
 
+**Option 1: Manual Initialization**
 ```ts
 import { Mapper } from '@neupgroup/mapper';
 
@@ -21,9 +23,61 @@ import { Mapper } from '@neupgroup/mapper';
 Mapper.init().connect('default', 'sqlite', { filename: './database.sqlite' });
 ```
 
+**Option 2: Auto-Initialization**
+If you have a `mapper.config.json` in your project root, `Mapper` will automatically load it when you call any command.
+
+```json
+{
+  "connections": [
+    { "name": "default", "type": "sqlite", "filename": "database.db" }
+  ],
+  "schemas": [
+    {
+      "name": "users",
+      "connection": "default",
+      "collection": "users",
+      "structure": [
+        { "name": "id", "type": "int", "isPrimary": true, "autoIncrement": true },
+        { "name": "username", "type": "string" }
+      ]
+    }
+  ]
+}
+```
+
+## Schema Operations (Validated)
+
+Use `Mapper.schemas()` to interact with defined schemas. This provides **client-side validation**, stripping unknown fields before they reach the database.
+
+```ts
+// 1. Insert (Validated)
+// 'created_by' will be stripped if not in the schema, preventing DB errors
+await Mapper.schemas('users').insert({ 
+    username: 'Alice', 
+    created_by: 'unknown' 
+});
+
+// 2. Select
+const users = await Mapper.schemas('users')
+    .where({ active: 1 }) // Object-style where
+    .limit(10)
+    .get();
+
+// 3. Update (Fluent Syntax)
+await Mapper.schemas('users')
+    .where({ id: 123 })
+    .set({ status: 'inactive' })
+    .update();
+
+// 4. Delete
+await Mapper.schemas('users')
+    .where({ id: 123 })
+    .delete();
+```
+
 ## Database Operations (DML)
 
-Use `Mapper.base()` to perform CRUD operations (Create, Read, Update, Delete).
+Use `Mapper.base()` for raw CRUD operations. **Note:** This bypasses schema validation and sends queries directly to the database.
 
 ```ts
 // 1. Select
@@ -35,17 +89,20 @@ const users = await Mapper.base('users')
 
 // 2. Insert
 await Mapper.base('users')
-    .insert({ name: 'Alice', email: 'alice@test.com' });
+    .insert({ name: 'Alice', email: 'alice@test.com' })
+    .exec();
 
 // 3. Update
 await Mapper.base('users')
     .update({ status: 'inactive' })
-    .where('id', 123);
+    .where('id', 123)
+    .exec();
 
 // 4. Delete
 await Mapper.base('users')
     .delete()
-    .where('id', 123);
+    .where('id', 123)
+    .exec();
 ```
 
 ## Migrations (DDL)

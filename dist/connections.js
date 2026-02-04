@@ -47,7 +47,18 @@ export class Connections {
         return this;
     }
     get(name) {
-        return this.connections.get(name);
+        if (this.connections.has(name)) {
+            return this.connections.get(name);
+        }
+        // If asking for 'default', try to find one marked as isDefault
+        if (name === 'default') {
+            for (const conn of this.connections.values()) {
+                if (conn.key && conn.key.isDefault) {
+                    return conn;
+                }
+            }
+        }
+        return undefined;
     }
     getAdapter(name) {
         return this.adapters.get(name);

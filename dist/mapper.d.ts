@@ -18,9 +18,19 @@ export declare class Mapper {
      */
     static raw(sql: string): Executor;
     /**
+     * Entry point for Schema-based queries with validation.
+     * @param name Schema name
+     */
+    static schemas(name: string): import("./schema-manager.js").SchemaQuery;
+    /**
      * Initialize connection manager.
      */
     static init(): InitMapper;
+    /**
+     * Ensure the mapper is initialized with at least one connection.
+     * If not, try to load default configuration.
+     */
+    private static ensureInitialized;
 }
 export declare const createMapper: () => InitMapper;
 export default Mapper;

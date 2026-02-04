@@ -16,18 +16,37 @@ Returns the singleton `InitMapper` instance to manage connections.
 
 ---
 
-### `static base(tableName: string): CrudBase`
-Returns a `CrudBase` instance for performing DML (Data Manipulation Language) operations on a specific table.
+### `static schemas(name: string): SchemaQuery`
+Returns a `SchemaQuery` instance for validated operations against a registered schema. Auto-initializes if config is present.
 
 **Methods:**
-- `select(columns: string[] = ['*']): Promise<any[]>`
-  - Retrieves records from the table.
+- `get(): Promise<any[]>`
+  - Retrieves records.
 - `insert(data: Record<string, any>): Promise<any>`
-  - Inserts a new record.
-- `update(data: Record<string, any>, where: Record<string, any>): Promise<any>`
-  - Updates records matching the `where` clause.
-- `delete(where: Record<string, any>): Promise<any>`
+  - Inserts a record with schema validation (strips unknown fields).
+- `set(data: Record<string, any>): this`
+  - Sets data for update operations.
+- `update(): Promise<void>`
+  - Updates records matching the `where` clause with data from `set()`.
+- `delete(): Promise<void>`
   - Deletes records matching the `where` clause.
+- `where(condition: Record<string, any> | string, value?: any): this`
+  - Adds filter conditions. Supports object style (`{ id: 1 }`) or key-value (`'id', 1`).
+
+---
+
+### `static base(tableName: string): CrudBase`
+Returns a `CrudBase` instance for performing raw DML operations. Bypasses schema validation.
+
+**Methods:**
+- `select(columns: string[] = ['*']): SelectBuilder`
+  - Returns a builder to retrieve records. Use `.get()` to execute.
+- `insert(data: Record<string, any>): InsertBuilder`
+  - Returns a builder to insert a record. Use `.exec()` to execute.
+- `update(data: Record<string, any>): UpdateBuilder`
+  - Returns a builder to update records. Chain `.where()` and use `.exec()`.
+- `delete(): DeleteBuilder`
+  - Returns a builder to delete records. Chain `.where()` and use `.exec()`.
 
 ---
 

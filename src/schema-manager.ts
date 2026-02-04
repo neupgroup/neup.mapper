@@ -182,10 +182,15 @@ export class SchemaQuery {
     return this;
   }
 
-  where(fieldOrPair: string | [string, any], value?: any, operator?: string) {
+  where(fieldOrPair: string | [string, any] | Record<string, any>, value?: any, operator?: string) {
     if (Array.isArray(fieldOrPair)) {
       const [field, v] = fieldOrPair;
       this.filters.push({ field, operator: '=', value: v });
+    } else if (typeof fieldOrPair === 'object' && fieldOrPair !== null) {
+      // Support object style where({ a: 1, b: 2 })
+      Object.entries(fieldOrPair).forEach(([field, v]) => {
+         this.filters.push({ field, operator: '=', value: v });
+      });
     } else {
       const field = fieldOrPair as string;
       this.filters.push({ field, operator: operator ?? '=', value });
@@ -218,9 +223,14 @@ export class SchemaQuery {
     return adapter;
   }
 
-  to(update: Record<string, any>) {
+  set(update: Record<string, any>) {
     this.pendingUpdate = update;
     return this;
+  }
+
+  // Deprecated alias kept for backward compatibility if needed, or remove if strictly following request
+  to(update: Record<string, any>) {
+      return this.set(update);
   }
 
   async get(): Promise<Record<string, any>[]> {
@@ -267,6 +277,10 @@ export class SchemaQuery {
     return adapter.addDocument(this.def.collectionName, data as any);
   }
 
+  async insert(data: Record<string, any>) {
+      return this.add(data);
+  }
+
   async delete() {
     const adapter = this.getAdapter();
 
@@ -275,7 +289,7 @@ export class SchemaQuery {
     }
 
     if (this.def.deleteType === 'softDelete') {
-      return this.to({ deletedOn: new Date() }).update();
+      return this.set({ deletedOn: new Date() }).update();
     }
 
     const docs = await this.get();
@@ -291,14 +305,23 @@ export class SchemaQuery {
     return this.delete();
   }
 
-  async update() {
+  async update(data?: Record<string, any>) {
     const adapter = this.getAdapter();
+    
+    // Allow passing data directly to update()
+    if (data) {
+        this.pendingUpdate = data;
+    }
+
     if (!this.pendingUpdate) throw new UpdatePayloadMissingError();
-    let data = this.pendingUpdate;
+    let updateData = this.pendingUpdate;
 
     if (this.def.updatableFields) {
       const allowed = new Set(this.def.updatableFields);
-      data = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.has(k)));
+      updateData = Object.fromEntries(Object.entries(updateData).filter(([k]) => allowed.has(k)));
+    } else if (!this.def.allowUndefinedFields) {
+        // Enforce strict schema if not explicitly allowed undefined fields
+        updateData = Object.fromEntries(Object.entries(updateData).filter(([k]) => this.allowedFields.has(k)));
     }
 
     if (!this.def.massEditAllowed && this.filters.length === 0 && !this._limit) {
@@ -309,13 +332,13 @@ export class SchemaQuery {
     for (const d of docs) {
       const id = (d as any).id;
       if (!id) throw new DocumentMissingIdError('update');
-      await adapter.updateDocument(this.def.collectionName, id, data as any);
+      await adapter.updateDocument(this.def.collectionName, id, updateData as any);
     }
   }
 
-  async updateOne() {
+  async updateOne(data?: Record<string, any>) {
     this._limit = 1;
-    return this.update();
+    return this.update(data);
   }
 }
 

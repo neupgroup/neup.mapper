@@ -46,18 +46,20 @@ export declare class SchemaQuery {
     limit(n: number): this;
     offset(n: number): this;
     selectFields(fields: string[]): this;
-    where(fieldOrPair: string | [string, any], value?: any, operator?: string): this;
+    where(fieldOrPair: string | [string, any] | Record<string, any>, value?: any, operator?: string): this;
     whereComplex(raw: string): this;
     private buildOptions;
     private getAdapter;
+    set(update: Record<string, any>): this;
     to(update: Record<string, any>): this;
     get(): Promise<Record<string, any>[]>;
     getOne(): Promise<Record<string, any> | null>;
     add(data: Record<string, any>): Promise<string>;
+    insert(data: Record<string, any>): Promise<string>;
     delete(): Promise<void>;
     deleteOne(): Promise<void>;
-    update(): Promise<void>;
-    updateOne(): Promise<void>;
+    update(data?: Record<string, any>): Promise<void>;
+    updateOne(data?: Record<string, any>): Promise<void>;
 }
 export declare class SchemaManager {
     private connections;
