@@ -231,6 +231,37 @@ export class MongoDBAdapter {
             return this.db;
         }
     }
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction() {
+        await this.ensureConnected();
+        const session = this.client.startSession();
+        session.startTransaction();
+        return session;
+    }
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(session) {
+        try {
+            await session.commitTransaction();
+        }
+        finally {
+            await session.endSession();
+        }
+    }
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(session) {
+        try {
+            await session.abortTransaction();
+        }
+        finally {
+            await session.endSession();
+        }
+    }
 }
 /**
  * Factory function to create MongoDB adapter

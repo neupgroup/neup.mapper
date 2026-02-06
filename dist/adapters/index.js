@@ -3,10 +3,12 @@ export { MySQLAdapter, createMySQLAdapter } from './mysql-adapter.js';
 export { PostgreSQLAdapter, createPostgreSQLAdapter } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter } from './mongodb-adapter.js';
 export { SQLiteAdapter, createSQLiteAdapter } from './sqlite-adapter.js';
+export { FirebaseAdapter, createFirebaseAdapter } from './firebase-adapter.js';
 import { createMySQLAdapter } from './mysql-adapter.js';
 import { createPostgreSQLAdapter } from './postgres-adapter.js';
 import { createMongoDBAdapter } from './mongodb-adapter.js';
 import { createSQLiteAdapter } from './sqlite-adapter.js';
+import { createFirebaseAdapter } from './firebase-adapter.js';
 /**
  * Auto-create adapter based on connection type
  */
@@ -24,6 +26,9 @@ export function createAdapter(adapterConfig) {
         case 'sqlite':
         case 'sqlite3':
             return createSQLiteAdapter(adapterConfig.config);
+        case 'firebase':
+        case 'firestore':
+            return createFirebaseAdapter(adapterConfig.config);
         default:
             throw new Error(`Unknown adapter type: ${adapterConfig.type}`);
     }

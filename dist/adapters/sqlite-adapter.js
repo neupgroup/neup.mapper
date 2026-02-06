@@ -165,6 +165,25 @@ export class SQLiteAdapter {
             return this.run(sql, values || []);
         }
     }
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction() {
+        await this.run('BEGIN TRANSACTION');
+        return this.db;
+    }
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(transaction) {
+        await this.run('COMMIT');
+    }
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(transaction) {
+        await this.run('ROLLBACK');
+    }
 }
 /**
  * Factory function to create SQLite adapter

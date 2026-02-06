@@ -29,6 +29,18 @@ export declare class SQLiteAdapter implements DbAdapter {
      * Execute a raw SQL query
      */
     raw(sql: string, values?: any[]): Promise<any>;
+    /**
+     * Begin a transaction
+     */
+    beginTransaction(): Promise<any>;
+    /**
+     * Commit a transaction
+     */
+    commitTransaction(transaction: any): Promise<void>;
+    /**
+     * Rollback a transaction
+     */
+    rollbackTransaction(transaction: any): Promise<void>;
 }
 /**
  * Factory function to create SQLite adapter

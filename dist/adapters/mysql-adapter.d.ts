@@ -31,6 +31,18 @@ export declare class MySQLAdapter implements DbAdapter {
      * Execute a raw SQL query
      */
     raw(sql: string, values?: any[]): Promise<any>;
+    /**
+     * Begin a transaction
+     */
+    beginTransaction(): Promise<any>;
+    /**
+     * Commit a transaction
+     */
+    commitTransaction(connection: any): Promise<void>;
+    /**
+     * Rollback a transaction
+     */
+    rollbackTransaction(connection: any): Promise<void>;
 }
 /**
  * Factory function to create MySQL adapter

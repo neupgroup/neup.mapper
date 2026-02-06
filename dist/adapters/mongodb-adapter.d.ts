@@ -50,6 +50,18 @@ export declare class MongoDBAdapter implements DbAdapter {
      */
     getStats(collectionName: string): Promise<any>;
     raw(query: string, params?: any[]): Promise<any>;
+    /**
+     * Begin a transaction
+     */
+    beginTransaction(): Promise<any>;
+    /**
+     * Commit a transaction
+     */
+    commitTransaction(session: any): Promise<void>;
+    /**
+     * Rollback a transaction
+     */
+    rollbackTransaction(session: any): Promise<void>;
 }
 /**
  * Factory function to create MongoDB adapter

@@ -157,6 +157,36 @@ export class MySQLAdapter {
             connection.release();
         }
     }
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction() {
+        const connection = await this.pool.getConnection();
+        await connection.beginTransaction();
+        return connection;
+    }
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(connection) {
+        try {
+            await connection.commit();
+        }
+        finally {
+            connection.release();
+        }
+    }
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(connection) {
+        try {
+            await connection.rollback();
+        }
+        finally {
+            connection.release();
+        }
+    }
 }
 /**
  * Factory function to create MySQL adapter

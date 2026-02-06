@@ -23,4 +23,7 @@ export interface DbAdapter {
     updateDocument(collectionName: string, docId: string, data: DocumentData): Promise<void>;
     deleteDocument(collectionName: string, docId: string): Promise<void>;
     raw(query: string, params?: any[]): Promise<any>;
+    beginTransaction(): Promise<any>;
+    commitTransaction(transaction: any): Promise<void>;
+    rollbackTransaction(transaction: any): Promise<void>;
 }
