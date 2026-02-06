@@ -1,4 +1,7 @@
 import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 export interface PostgreSQLConfig {
     host: string;
@@ -192,7 +195,11 @@ export class PostgreSQLAdapter implements DbAdapter {
         const client = await this.pool.connect();
         try {
             const result = await client.query(sql, values || []);
-            return result.rows;
+            // For SELECT, return rows. For others, return the result object (for rowCount etc)
+            if (sql.trim().toUpperCase().startsWith('SELECT')) {
+                return result.rows;
+            }
+            return result;
         } finally {
             client.release();
         }

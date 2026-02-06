@@ -277,6 +277,38 @@ export class MongoDBAdapter implements DbAdapter {
             return this.db;
         }
     }
+
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction(): Promise<any> {
+        await this.ensureConnected();
+        const session = this.client.startSession();
+        session.startTransaction();
+        return session;
+    }
+
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(session: any): Promise<void> {
+        try {
+            await session.commitTransaction();
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(session: any): Promise<void> {
+        try {
+            await session.abortTransaction();
+        } finally {
+            await session.endSession();
+        }
+    }
 }
 
 /**

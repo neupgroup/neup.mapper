@@ -189,6 +189,37 @@ export class MySQLAdapter implements DbAdapter {
             connection.release();
         }
     }
+
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction(): Promise<any> {
+        const connection = await this.pool.getConnection();
+        await connection.beginTransaction();
+        return connection;
+    }
+
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(connection: any): Promise<void> {
+        try {
+            await connection.commit();
+        } finally {
+            connection.release();
+        }
+    }
+
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(connection: any): Promise<void> {
+        try {
+            await connection.rollback();
+        } finally {
+            connection.release();
+        }
+    }
 }
 
 /**

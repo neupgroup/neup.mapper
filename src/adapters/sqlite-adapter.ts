@@ -191,6 +191,28 @@ export class SQLiteAdapter implements DbAdapter {
             return this.run(sql, values || []);
         }
     }
+
+    /**
+     * Begin a transaction
+     */
+    async beginTransaction(): Promise<any> {
+        await this.run('BEGIN TRANSACTION');
+        return this.db;
+    }
+
+    /**
+     * Commit a transaction
+     */
+    async commitTransaction(transaction: any): Promise<void> {
+        await this.run('COMMIT');
+    }
+
+    /**
+     * Rollback a transaction
+     */
+    async rollbackTransaction(transaction: any): Promise<void> {
+        await this.run('ROLLBACK');
+    }
 }
 
 /**

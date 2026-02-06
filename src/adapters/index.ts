@@ -3,18 +3,21 @@ export { MySQLAdapter, createMySQLAdapter, type MySQLConfig } from './mysql-adap
 export { PostgreSQLAdapter, createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
 export { MongoDBAdapter, createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
 export { SQLiteAdapter, createSQLiteAdapter, type SQLiteConfig } from './sqlite-adapter.js';
+export { FirebaseAdapter, createFirebaseAdapter, type FirebaseConfig } from './firebase-adapter.js';
 
 import type { DbAdapter } from '../orm/types.js';
 import { createMySQLAdapter, type MySQLConfig } from './mysql-adapter.js';
 import { createPostgreSQLAdapter, type PostgreSQLConfig } from './postgres-adapter.js';
 import { createMongoDBAdapter, type MongoDBConfig } from './mongodb-adapter.js';
 import { createSQLiteAdapter, type SQLiteConfig } from './sqlite-adapter.js';
+import { createFirebaseAdapter, type FirebaseConfig } from './firebase-adapter.js';
 
 export type AdapterConfig =
     | { type: 'mysql'; config: MySQLConfig }
     | { type: 'postgres' | 'postgresql' | 'sql'; config: PostgreSQLConfig }
     | { type: 'mongodb' | 'mongo'; config: MongoDBConfig }
-    | { type: 'sqlite' | 'sqlite3'; config: SQLiteConfig };
+    | { type: 'sqlite' | 'sqlite3'; config: SQLiteConfig }
+    | { type: 'firebase' | 'firestore'; config: FirebaseConfig };
 
 /**
  * Auto-create adapter based on connection type
@@ -36,6 +39,10 @@ export function createAdapter(adapterConfig: AdapterConfig): DbAdapter {
         case 'sqlite':
         case 'sqlite3':
             return createSQLiteAdapter(adapterConfig.config as any);
+
+        case 'firebase':
+        case 'firestore':
+            return createFirebaseAdapter(adapterConfig.config);
 
         default:
             throw new Error(`Unknown adapter type: ${(adapterConfig as any).type}`);
