@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8378",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8378",
     "lint": "eslint",
     "create-schemas": "node ../dist/cli/create-schemas.js"
   },

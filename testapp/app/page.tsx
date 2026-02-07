@@ -5,7 +5,7 @@ import styles from "./page.module.css";
 export default async function Home() {
 
   console.log("returning the inserted user object");
-  const returns = await Mapper.schemas('users').get();
+  const returns = await Mapper.base('users').select().get();
   console.log("returns", returns);
 
   return (
