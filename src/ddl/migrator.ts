@@ -1,4 +1,5 @@
 import { Executor } from '../core/executor.js';
+import { ensureInitialized } from '../core/initializer.js';
 
 // --- New Command Builders ---
 
@@ -380,6 +381,7 @@ export class Migrator {
     }
 
     async execute(): Promise<void> {
+        await ensureInitialized();
         // Dynamic import to avoid circular deps if any, though less likely here
         const fs = await import('fs');
         const path = await import('path');

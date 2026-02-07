@@ -1,4 +1,5 @@
 import { InitMapper } from './init-mapper.js';
+import { ensureInitialized } from './initializer.js';
 
 export class Executor {
     private _bindings: any[] = [];
@@ -17,6 +18,8 @@ export class Executor {
     }
 
     async execute(): Promise<any> {
+        await ensureInitialized();
+        
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
         const conn = connections.get(this._connectionName);
