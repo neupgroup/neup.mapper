@@ -3,6 +3,13 @@ import { Migrator } from './ddl/migrator.js';
 import { Executor } from './core/executor.js';
 import { InitMapper } from './core/init-mapper.js';
 export declare class Mapper {
+    private static initPromise;
+    private static initialized;
+    /**
+     * Lazy initialization: loads mapper.config.json and registers connections and schemas.
+     * This runs automatically before any Mapper method is called.
+     */
+    private static ensureInitialized;
     /**
      * Entry point for Data Manipulation (CRUD).
      * @param table Table name
@@ -31,7 +38,7 @@ export declare class Mapper {
      * If not, try to load default configuration.
      * @deprecated Use automatic async initialization instead.
      */
-    private static ensureInitialized;
+    private static ensureInitializedSync;
 }
 export declare const createMapper: () => InitMapper;
 export default Mapper;
