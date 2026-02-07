@@ -191,8 +191,8 @@ export class PostgreSQLAdapter implements DbAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql: string, values?: any[]): Promise<any> {
-        const client = await this.pool.connect();
+    async raw(sql: string, values?: any[], options?: { transaction?: any }): Promise<any> {
+        const client = options?.transaction || await this.pool.connect();
         try {
             const result = await client.query(sql, values || []);
             // For SELECT, return rows. For others, return the result object (for rowCount etc)
@@ -201,7 +201,9 @@ export class PostgreSQLAdapter implements DbAdapter {
             }
             return result;
         } finally {
-            client.release();
+            if (!options?.transaction) {
+                client.release();
+            }
         }
     }
 

@@ -119,7 +119,7 @@ export class FirebaseAdapter implements DbAdapter {
     async get(options: QueryOptions): Promise<DocumentData[]> {
         const query = this.buildQuery(options.collectionName, options);
         const snapshot = await query.get();
-        
+
         return snapshot.docs.map((doc: any) => ({
             ...doc.data(),
             id: doc.id // Ensure ID is included
@@ -129,7 +129,7 @@ export class FirebaseAdapter implements DbAdapter {
     async getOne(options: QueryOptions): Promise<DocumentData | null> {
         const query = this.buildQuery(options.collectionName, { ...options, limit: 1 });
         const snapshot = await query.get();
-        
+
         if (snapshot.empty) return null;
         const doc = snapshot.docs[0];
         return {
@@ -162,7 +162,7 @@ export class FirebaseAdapter implements DbAdapter {
      * Execute a raw command or access internal instance
      * If query is 'instance', returns the Firestore instance.
      */
-    async raw(query: string, params?: any[]): Promise<any> {
+    async raw(query: string, params?: any[], options?: { transaction?: any }): Promise<any> {
         if (query === 'instance') {
             return this.db;
         }

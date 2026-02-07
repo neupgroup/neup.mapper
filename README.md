@@ -322,3 +322,55 @@ interface User {
 }
 const users = await Mapper.base('users').select() as User[];
 ```
+
+---
+
+## 🔐 Transactions
+
+Transactions allow you to execute multiple operations as a single atomic unit. This is supported for PostgreSQL, MySQL, SQLite, and MongoDB.
+
+### Basic Usage
+
+```typescript
+// 1. Start a transaction
+const tx = await Mapper.beginTransaction();
+
+try {
+    // 2. Use the transaction in operations
+    // Note: You must chain .useTransaction(tx) to include the operation in the transaction
+    
+    // Insert a record
+    const userId = await Mapper.base('users')
+        .insert({ name: 'Alice', balance: 100 })
+        .useTransaction(tx)
+        .exec();
+
+    // Update another record
+    await Mapper.base('accounts')
+        .update({ status: 'active' })
+        .where('user_id', userId)
+        .useTransaction(tx) // Important!
+        .exec();
+
+    // 3. Commit the changes
+    await Mapper.commitTransaction(tx);
+    
+} catch (error) {
+    // 4. Rollback on error
+    await Mapper.rollbackTransaction(tx);
+    console.error('Transaction failed:', error);
+}
+```
+
+### Using Specific Connections
+
+If you have multiple connections, you can start a transaction on a specific one:
+
+```typescript
+const tx = await Mapper.beginTransaction('analytics'); // 'analytics' is the connection name
+```
+
+The transaction handle automatically knows which connection it belongs to, so you don't need to specify it again when committing or rolling back.
+
+**Note:** For MongoDB, transactions require a Replica Set.
+

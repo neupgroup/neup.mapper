@@ -180,13 +180,15 @@ export class MySQLAdapter implements DbAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql: string, values?: any[]): Promise<any> {
-        const connection = await this.pool.getConnection();
+    async raw(sql: string, values?: any[], options?: { transaction?: any }): Promise<any> {
+        const connection = options?.transaction || await this.pool.getConnection();
         try {
             const [results] = await connection.execute(sql, values || []);
             return results;
         } finally {
-            connection.release();
+            if (!options?.transaction) {
+                connection.release();
+            }
         }
     }
 

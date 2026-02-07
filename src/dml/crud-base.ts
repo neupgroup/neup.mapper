@@ -38,9 +38,18 @@ export class SelectBuilder {
     private _offset: number | null = null;
     private _select: string;
     private _connection: string | null = null;
+    private _transaction: any = null;
 
     constructor(private table: string, fields: string[]) {
         this._select = fields.join(', ');
+    }
+
+    useTransaction(transaction: any): this {
+        this._transaction = transaction;
+        if (transaction && transaction.connectionName) {
+            this._connection = transaction.connectionName;
+        }
+        return this;
     }
 
     useConnection(name: string): this {
@@ -101,16 +110,25 @@ export class SelectBuilder {
         if (this._offset) {
             sql += ` OFFSET ${this._offset}`;
         }
-        return new Executor(sql).bind(this._bindings).useConnection(connName).execute();
+        return new Executor(sql).bind(this._bindings).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
 
 export class InsertBuilder {
     private _connection: string | null = null;
+    private _transaction: any = null;
     constructor(private table: string, private data: Record<string, any>) { }
 
     useConnection(name: string): this {
         this._connection = name;
+        return this;
+    }
+
+    useTransaction(transaction: any): this {
+        this._transaction = transaction;
+        if (transaction && transaction.connectionName) {
+            this._connection = transaction.connectionName;
+        }
         return this;
     }
 
@@ -165,7 +183,8 @@ export class InsertBuilder {
         const values = Object.values(this.data);
         const placeholders = keys.map(() => '?').join(', ');
         const sql = `INSERT INTO ${this.table} (${keys.join(', ')}) VALUES (${placeholders})`;
-        return new Executor(sql).bind(values).useConnection(connName).execute();
+
+        return new Executor(sql).bind(values).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
 
@@ -173,11 +192,20 @@ export class UpdateBuilder {
     private _where: string[] = [];
     private _bindings: any[] = [];
     private _connection: string | null = null;
+    private _transaction: any = null;
 
     constructor(private table: string, private data: Record<string, any>) { }
 
     useConnection(name: string): this {
         this._connection = name;
+        return this;
+    }
+
+    useTransaction(transaction: any): this {
+        this._transaction = transaction;
+        if (transaction && transaction.connectionName) {
+            this._connection = transaction.connectionName;
+        }
         return this;
     }
 
@@ -216,7 +244,7 @@ export class UpdateBuilder {
             allBindings.push(...this._bindings);
         }
 
-        return new Executor(sql).bind(allBindings).useConnection(connName).execute();
+        return new Executor(sql).bind(allBindings).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
 
@@ -224,11 +252,20 @@ export class DeleteBuilder {
     private _where: string[] = [];
     private _bindings: any[] = [];
     private _connection: string | null = null;
+    private _transaction: any = null;
 
     constructor(private table: string) { }
 
     useConnection(name: string): this {
         this._connection = name;
+        return this;
+    }
+
+    useTransaction(transaction: any): this {
+        this._transaction = transaction;
+        if (transaction && transaction.connectionName) {
+            this._connection = transaction.connectionName;
+        }
         return this;
     }
 
@@ -259,6 +296,6 @@ export class DeleteBuilder {
         if (this._where.length > 0) {
             sql += ` WHERE ${this._where.join(' AND ')}`;
         }
-        return new Executor(sql).bind(this._bindings).useConnection(connName).execute();
+        return new Executor(sql).bind(this._bindings).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }

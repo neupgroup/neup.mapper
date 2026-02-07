@@ -184,7 +184,8 @@ export class SQLiteAdapter implements DbAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql: string, values?: any[]): Promise<any> {
+    async raw(sql: string, values?: any[], options?: { transaction?: any }): Promise<any> {
+        // SQLite uses successful connection for transaction, so we use the same db instance
         if (sql.trim().toUpperCase().startsWith('SELECT')) {
             return this.all(sql, values || []);
         } else {
