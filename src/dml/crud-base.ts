@@ -48,7 +48,9 @@ export class CrudBase {
             if (schemaDef && schemaDef.usesConnection) {
                 return schemaDef.usesConnection;
             }
-            return 'default';
+            
+            const defaultConn = InitMapper.getInstance().getDefaultConnection();
+            return defaultConn ? defaultConn.name : 'default';
         } catch (e) {
             return 'default';
         }

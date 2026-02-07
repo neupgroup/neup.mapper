@@ -58,18 +58,29 @@ export class Connections {
   }
 
   get(name: string) {
+    // If asking for 'default', prioritize the default resolution logic
+    if (name === 'default') {
+      return this.getDefault();
+    }
+
     if (this.connections.has(name)) {
       return this.connections.get(name);
     }
-    // If asking for 'default', try to find one marked as isDefault
-    if (name === 'default') {
+    return undefined;
+  }
+
+  getDefault() {
+      // Prioritize explicit isDefault flag
       for (const conn of this.connections.values()) {
         if (conn.key && conn.key.isDefault) {
           return conn;
         }
       }
-    }
-    return undefined;
+      // Fallback to name 'default' if it exists (for backward compatibility)
+      if (this.connections.has('default')) {
+          return this.connections.get('default');
+      }
+      return undefined;
   }
 
   getAdapter(name: string) {
