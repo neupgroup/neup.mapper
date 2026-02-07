@@ -218,12 +218,13 @@ export class MongoDBAdapter {
         const collection = this.db.collection(collectionName);
         return await collection.stats();
     }
-    async raw(query, params) {
+    async raw(query, params, options) {
         await this.ensureConnected();
         try {
             // Try to parse query as a command object if it's a string
             const command = typeof query === 'string' ? JSON.parse(query) : query;
-            return await this.db.command(command);
+            const cmdOptions = (options === null || options === void 0 ? void 0 : options.transaction) ? { session: options.transaction } : {};
+            return await this.db.command(command, cmdOptions);
         }
         catch (e) {
             // For migrations, if it's not JSON, we might not be able to do much

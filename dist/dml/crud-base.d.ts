@@ -14,7 +14,9 @@ export declare class SelectBuilder {
     private _offset;
     private _select;
     private _connection;
+    private _transaction;
     constructor(table: string, fields: string[]);
+    useTransaction(transaction: any): this;
     useConnection(name: string): this;
     where(field: string, value: any, operator?: string): this;
     limit(limit: number): this;
@@ -27,8 +29,10 @@ export declare class InsertBuilder {
     private table;
     private data;
     private _connection;
+    private _transaction;
     constructor(table: string, data: Record<string, any>);
     useConnection(name: string): this;
+    useTransaction(transaction: any): this;
     exec(): Promise<any>;
 }
 export declare class UpdateBuilder {
@@ -37,8 +41,10 @@ export declare class UpdateBuilder {
     private _where;
     private _bindings;
     private _connection;
+    private _transaction;
     constructor(table: string, data: Record<string, any>);
     useConnection(name: string): this;
+    useTransaction(transaction: any): this;
     where(field: string, value: any, operator?: string): this;
     exec(): Promise<any>;
 }
@@ -47,8 +53,10 @@ export declare class DeleteBuilder {
     private _where;
     private _bindings;
     private _connection;
+    private _transaction;
     constructor(table: string);
     useConnection(name: string): this;
+    useTransaction(transaction: any): this;
     where(field: string, value: any, operator?: string): this;
     exec(): Promise<any>;
 }

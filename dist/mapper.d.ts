@@ -39,6 +39,21 @@ export declare class Mapper {
      * @deprecated Use automatic async initialization instead.
      */
     private static ensureInitializedSync;
+    /**
+     * Start a transaction.
+     * @param connectionName Optional connection name. Defaults to default connection.
+     */
+    static beginTransaction(connectionName?: string): Promise<any>;
+    /**
+     * Commit a transaction.
+     * @param transaction The transaction handle returned by beginTransaction.
+     */
+    static commitTransaction(transaction: any): Promise<void>;
+    /**
+     * Rollback a transaction.
+     * @param transaction The transaction handle returned by beginTransaction.
+     */
+    static rollbackTransaction(transaction: any): Promise<void>;
 }
 export declare const createMapper: () => InitMapper;
 export default Mapper;

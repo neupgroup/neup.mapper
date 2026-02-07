@@ -157,7 +157,8 @@ export class SQLiteAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql, values) {
+    async raw(sql, values, options) {
+        // SQLite uses successful connection for transaction, so we use the same db instance
         if (sql.trim().toUpperCase().startsWith('SELECT')) {
             return this.all(sql, values || []);
         }

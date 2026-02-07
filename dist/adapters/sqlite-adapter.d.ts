@@ -28,7 +28,9 @@ export declare class SQLiteAdapter implements DbAdapter {
     /**
      * Execute a raw SQL query
      */
-    raw(sql: string, values?: any[]): Promise<any>;
+    raw(sql: string, values?: any[], options?: {
+        transaction?: any;
+    }): Promise<any>;
     /**
      * Begin a transaction
      */

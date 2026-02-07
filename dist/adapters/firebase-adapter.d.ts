@@ -35,7 +35,9 @@ export declare class FirebaseAdapter implements DbAdapter {
      * Execute a raw command or access internal instance
      * If query is 'instance', returns the Firestore instance.
      */
-    raw(query: string, params?: any[]): Promise<any>;
+    raw(query: string, params?: any[], options?: {
+        transaction?: any;
+    }): Promise<any>;
     /**
      * Begin a transaction (WriteBatch)
      * Firestore transactions are callback-based, so we map this to a WriteBatch for atomic writes.

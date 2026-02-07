@@ -147,14 +147,16 @@ export class MySQLAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql, values) {
-        const connection = await this.pool.getConnection();
+    async raw(sql, values, options) {
+        const connection = (options === null || options === void 0 ? void 0 : options.transaction) || await this.pool.getConnection();
         try {
             const [results] = await connection.execute(sql, values || []);
             return results;
         }
         finally {
-            connection.release();
+            if (!(options === null || options === void 0 ? void 0 : options.transaction)) {
+                connection.release();
+            }
         }
     }
     /**

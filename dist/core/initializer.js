@@ -20,9 +20,6 @@ export async function ensureInitialized() {
         const possibleConnectionFiles = [
             path.join(cwd, 'mapper/connections.ts'),
             path.join(cwd, 'mapper/connections.js'),
-            path.join(cwd, 'src/mapper/connections.ts'),
-            path.join(cwd, 'dist/mapper/connections.js'),
-            path.join(cwd, 'src/mapper/connections.js')
         ];
         let connectionsLoaded = false;
         for (const file of possibleConnectionFiles) {
@@ -49,9 +46,6 @@ export async function ensureInitialized() {
         const possibleSchemaFiles = [
             path.join(cwd, 'mapper/schemas.ts'),
             path.join(cwd, 'mapper/schemas.js'),
-            path.join(cwd, 'src/mapper/schemas.ts'),
-            path.join(cwd, 'dist/mapper/schemas.js'),
-            path.join(cwd, 'src/mapper/schemas.js')
         ];
         for (const file of possibleSchemaFiles) {
             if (fs.existsSync(file)) {

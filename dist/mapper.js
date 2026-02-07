@@ -174,6 +174,56 @@ export class Mapper {
             }
         }
     }
+    /**
+     * Start a transaction.
+     * @param connectionName Optional connection name. Defaults to default connection.
+     */
+    static async beginTransaction(connectionName) {
+        var _a;
+        await Mapper.ensureInitialized();
+        const initMapper = InitMapper.getInstance();
+        const connName = connectionName || ((_a = initMapper.getDefaultConnection()) === null || _a === void 0 ? void 0 : _a.name) || 'default';
+        const connections = initMapper.getConnections();
+        const conn = connections.get(connName);
+        if (!conn)
+            throw new Error(`Connection '${connName}' not found.`);
+        const adapter = connections.getAdapter(connName);
+        // Use 'any' cast because not all adapters might be updated in types yet (though we did update interface)
+        // Check if method exists
+        if (typeof adapter.beginTransaction !== 'function') {
+            throw new Error(`Connection '${connName}' does not support transactions.`);
+        }
+        const client = await adapter.beginTransaction();
+        return { client, connectionName: connName };
+    }
+    /**
+     * Commit a transaction.
+     * @param transaction The transaction handle returned by beginTransaction.
+     */
+    static async commitTransaction(transaction) {
+        if (!transaction || !transaction.connectionName) {
+            throw new Error('Invalid transaction handle.');
+        }
+        const initMapper = InitMapper.getInstance();
+        const adapter = initMapper.getConnections().getAdapter(transaction.connectionName);
+        if (adapter && typeof adapter.commitTransaction === 'function') {
+            await adapter.commitTransaction(transaction.client);
+        }
+    }
+    /**
+     * Rollback a transaction.
+     * @param transaction The transaction handle returned by beginTransaction.
+     */
+    static async rollbackTransaction(transaction) {
+        if (!transaction || !transaction.connectionName) {
+            throw new Error('Invalid transaction handle.');
+        }
+        const initMapper = InitMapper.getInstance();
+        const adapter = initMapper.getConnections().getAdapter(transaction.connectionName);
+        if (adapter && typeof adapter.rollbackTransaction === 'function') {
+            await adapter.rollbackTransaction(transaction.client);
+        }
+    }
 }
 Mapper.initPromise = null;
 Mapper.initialized = false;

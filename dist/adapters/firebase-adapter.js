@@ -143,7 +143,7 @@ export class FirebaseAdapter {
      * Execute a raw command or access internal instance
      * If query is 'instance', returns the Firestore instance.
      */
-    async raw(query, params) {
+    async raw(query, params, options) {
         if (query === 'instance') {
             return this.db;
         }

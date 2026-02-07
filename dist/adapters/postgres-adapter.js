@@ -157,8 +157,8 @@ export class PostgreSQLAdapter {
     /**
      * Execute a raw SQL query
      */
-    async raw(sql, values) {
-        const client = await this.pool.connect();
+    async raw(sql, values, options) {
+        const client = (options === null || options === void 0 ? void 0 : options.transaction) || await this.pool.connect();
         try {
             const result = await client.query(sql, values || []);
             // For SELECT, return rows. For others, return the result object (for rowCount etc)
@@ -168,7 +168,9 @@ export class PostgreSQLAdapter {
             return result;
         }
         finally {
-            client.release();
+            if (!(options === null || options === void 0 ? void 0 : options.transaction)) {
+                client.release();
+            }
         }
     }
     /**
