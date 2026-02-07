@@ -114,6 +114,35 @@ export class InsertBuilder {
         }
         if (!connName)
             connName = 'default';
+        // Apply default values from schema definition
+        const schemaManager = InitMapper.getInstance().getSchemaManager();
+        try {
+            // Try to get schema definition to apply defaults
+            const schemas = schemaManager.list();
+            const schemaDef = schemas.find(s => s.collectionName === this.table || s.name === this.table);
+            if (schemaDef && schemaDef.fields) {
+                // Apply defaults for missing fields
+                for (const field of schemaDef.fields) {
+                    if (this.data[field.name] === undefined && field.defaultValue !== undefined) {
+                        if (field.defaultValue === 'NOW()') {
+                            this.data[field.name] = new Date().toISOString();
+                        }
+                        else {
+                            this.data[field.name] = field.defaultValue;
+                        }
+                    }
+                }
+            }
+        }
+        catch (e) {
+            // Schema not found or error accessing it, continue without defaults
+        }
+        // Convert Date objects to ISO strings for database compatibility
+        for (const key in this.data) {
+            if (this.data[key] instanceof Date) {
+                this.data[key] = this.data[key].toISOString();
+            }
+        }
         const keys = Object.keys(this.data);
         const values = Object.values(this.data);
         const placeholders = keys.map(() => '?').join(', ');
