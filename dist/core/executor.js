@@ -1,4 +1,5 @@
 import { InitMapper } from './init-mapper.js';
+import { ensureInitialized } from './initializer.js';
 export class Executor {
     constructor(sql) {
         this.sql = sql;
@@ -14,6 +15,7 @@ export class Executor {
         return this;
     }
     async execute() {
+        await ensureInitialized();
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
         const conn = connections.get(this._connectionName);

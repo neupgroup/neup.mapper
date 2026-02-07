@@ -8,6 +8,7 @@ export declare class InitMapper {
     private constructor();
     static getInstance(): InitMapper;
     getConnections(): Connections;
+    getDefaultConnection(): any;
     getSchemaManager(): SchemaManager;
     connect(name: string, type: any, config: any): this;
     schema(name: string): import("../schema-manager.js").SchemaBuilder;

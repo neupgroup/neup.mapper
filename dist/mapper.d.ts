@@ -29,6 +29,7 @@ export declare class Mapper {
     /**
      * Ensure the mapper is initialized with at least one connection.
      * If not, try to load default configuration.
+     * @deprecated Use automatic async initialization instead.
      */
     private static ensureInitialized;
 }

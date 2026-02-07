@@ -1,7 +1,6 @@
 export declare class CrudBase {
     private table;
     constructor(table: string);
-    private getUsesConnection;
     select(fields?: string[]): SelectBuilder;
     insert(data: Record<string, any>): InsertBuilder;
     update(data: Record<string, any>): UpdateBuilder;

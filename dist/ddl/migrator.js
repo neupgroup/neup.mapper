@@ -1,4 +1,5 @@
 import { Executor } from '../core/executor.js';
+import { ensureInitialized } from '../core/initializer.js';
 export class CreateTableBuilder {
     constructor(tableName) {
         this.tableName = tableName;
@@ -334,6 +335,7 @@ export class Migrator {
         return this.execute();
     }
     async execute() {
+        await ensureInitialized();
         // Dynamic import to avoid circular deps if any, though less likely here
         const fs = await import('fs');
         const path = await import('path');

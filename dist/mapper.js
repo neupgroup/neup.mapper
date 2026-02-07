@@ -9,7 +9,6 @@ export class Mapper {
      * @param table Table name
      */
     static base(table) {
-        this.ensureInitialized();
         return new CrudBase(table);
     }
     /**
@@ -17,14 +16,12 @@ export class Mapper {
      * @param table Optional table name. If provided, returns a fluent builder.
      */
     static migrator(table) {
-        this.ensureInitialized();
         return new Migrator(table);
     }
     /**
      * Entry point for Raw SQL.
      */
     static raw(sql) {
-        this.ensureInitialized();
         return new Executor(sql);
     }
     /**
@@ -32,7 +29,6 @@ export class Mapper {
      * @param name Schema name
      */
     static schemas(name) {
-        this.ensureInitialized();
         return InitMapper.getInstance().getSchemaManager().use(name);
     }
     /**
@@ -44,18 +40,18 @@ export class Mapper {
     /**
      * Ensure the mapper is initialized with at least one connection.
      * If not, try to load default configuration.
+     * @deprecated Use automatic async initialization instead.
      */
     static ensureInitialized() {
+        // Deprecated: No-op or keep for legacy sync calls if any
         const init = InitMapper.getInstance();
         if (init.getConnections().list().length === 0) {
             try {
-                // This will try to load from default config locations
+                // This will try to load from default config locations (synchronously only)
                 createDefaultMapper();
             }
             catch (e) {
-                // Ignore error if config not found, maybe user intends to register manually later
-                // But since they are calling base/migrator, they likely expect it to work.
-                console.warn('Mapper: Auto-initialization failed or no config found. Please ensure connections are registered.');
+                // Ignore
             }
         }
     }

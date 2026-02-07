@@ -47,16 +47,25 @@ export class Connections {
         return this;
     }
     get(name) {
+        // If asking for 'default', prioritize the default resolution logic
+        if (name === 'default') {
+            return this.getDefault();
+        }
         if (this.connections.has(name)) {
             return this.connections.get(name);
         }
-        // If asking for 'default', try to find one marked as isDefault
-        if (name === 'default') {
-            for (const conn of this.connections.values()) {
-                if (conn.key && conn.key.isDefault) {
-                    return conn;
-                }
+        return undefined;
+    }
+    getDefault() {
+        // Prioritize explicit isDefault flag
+        for (const conn of this.connections.values()) {
+            if (conn.key && conn.key.isDefault) {
+                return conn;
             }
+        }
+        // Fallback to name 'default' if it exists (for backward compatibility)
+        if (this.connections.has('default')) {
+            return this.connections.get('default');
         }
         return undefined;
     }

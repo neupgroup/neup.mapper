@@ -19,6 +19,7 @@ export declare class Connections {
     register(config: ConnectionConfig): this;
     attachAdapter(name: string, adapter: DbAdapter): this;
     get(name: string): ConnectionConfig | undefined;
+    getDefault(): ConnectionConfig | undefined;
     getAdapter(name: string): DbAdapter | undefined;
     list(): ConnectionConfig[];
 }

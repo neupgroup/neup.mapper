@@ -16,6 +16,9 @@ export class InitMapper {
     getConnections() {
         return this.connections;
     }
+    getDefaultConnection() {
+        return this.connections.getDefault();
+    }
     getSchemaManager() {
         return this.schemaManager;
     }
