@@ -29,7 +29,7 @@ if (!connectionName) {
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'src/mapper');
+const configDir = path.resolve(process.cwd(), 'mapper');
 const filePath = path.join(configDir, 'connections.ts');
 
 if (!fs.existsSync(filePath)) {
@@ -47,7 +47,7 @@ try {
     }
 
     const arrayStr = match[1];
-    
+
     // 2. Parse it
     let connections;
     try {

@@ -28,17 +28,17 @@ class MockColumnBuilder extends ColumnBuilder {
     }
     // We can override methods if needed, but the base ColumnBuilder just updates `this.def`
     // which is exactly what we want.
-    
+
     dropUnique(): this {
         if (this.builder && this.builder instanceof MockUpdateTableBuilder) {
-             this.builder.recordDropConstraint('unique', this.getDefinition().name);
+            this.builder.recordDropConstraint('unique', this.getDefinition().name);
         }
         return this;
     }
 
     dropPrimaryKey(): this {
         if (this.builder && this.builder instanceof MockUpdateTableBuilder) {
-             this.builder.recordDropConstraint('primary', this.getDefinition().name);
+            this.builder.recordDropConstraint('primary', this.getDefinition().name);
         }
         return this;
     }
@@ -49,11 +49,11 @@ class MockCreateTableBuilder extends CreateTableBuilder {
     // connectionName is inherited from CreateTableBuilder (string, default 'default')
     // But we need to detect if it was changed or if we should use global currentConnection.
     private hasCustomConnection: boolean = false;
-    
+
     constructor(private mockTableName: string) {
         super(mockTableName);
     }
-    
+
     useConnection(name: string): this {
         super.useConnection(name);
         this.hasCustomConnection = true;
@@ -69,28 +69,28 @@ class MockCreateTableBuilder extends CreateTableBuilder {
     async exec(): Promise<void> {
         // Here we generate the schema!
         const fields = this.mockColumns.map(c => {
-             const def = c.getDefinition();
-             // Transform to schema field format
-             const schemaField: any = { name: def.name, type: def.type };
-             if (def.isPrimary) schemaField.isPrimary = true;
-             if (def.autoIncrement) schemaField.autoIncrement = true;
-             if (def.notNull) schemaField.notNull = true;
-             if (def.isUnique) schemaField.isUnique = true;
-             if (def.defaultValue !== undefined) schemaField.defaultValue = def.defaultValue;
-             return schemaField;
+            const def = c.getDefinition();
+            // Transform to schema field format
+            const schemaField: any = { name: def.name, type: def.type };
+            if (def.isPrimary) schemaField.isPrimary = true;
+            if (def.autoIncrement) schemaField.autoIncrement = true;
+            if (def.notNull) schemaField.notNull = true;
+            if (def.isUnique) schemaField.isUnique = true;
+            if (def.defaultValue !== undefined) schemaField.defaultValue = def.defaultValue;
+            return schemaField;
         });
 
         schemas[this.mockTableName] = {
             fields: fields,
             collection: this.mockTableName
         };
-        
+
         // Priority: 1. Explicit .useConnection() in builder 2. Global currentConnection (from migration file)
         if (this.hasCustomConnection) {
             // We can access 'connectionName' from parent because it's private in parent?
             // Actually it is private in CreateTableBuilder in src/ddl/migrator.ts.
             // So we can't access it here unless we change visibility or use 'any'.
-             schemas[this.mockTableName].usesConnection = (this as any).connectionName;
+            schemas[this.mockTableName].usesConnection = (this as any).connectionName;
         } else if (currentConnection) {
             schemas[this.mockTableName].usesConnection = currentConnection;
         }
@@ -107,7 +107,7 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
     constructor(private mockTableName: string) {
         super(mockTableName);
     }
-    
+
     useConnection(name: string): this {
         super.useConnection(name);
         this.hasCustomConnection = true;
@@ -122,7 +122,7 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
         this.mockColumns.push(col);
         return col;
     }
-    
+
     modifyColumn(name: string): ColumnBuilder {
         const col = new MockColumnBuilder(name, new MockMigrator(this.mockTableName), this);
         this.modifiedColumns.push(col);
@@ -133,7 +133,7 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
         this.droppedColumns.push(name);
         return this;
     }
-    
+
     recordDropConstraint(type: 'unique' | 'primary' | 'notNull', column: string) {
         this.droppedConstraints.push({ type, column });
     }
@@ -148,39 +148,39 @@ class MockUpdateTableBuilder extends UpdateTableBuilder {
 
         // Add new columns
         for (const col of this.mockColumns) {
-             const def = col.getDefinition();
-             const schemaField: any = { name: def.name, type: def.type };
-             if (def.isPrimary) schemaField.isPrimary = true;
-             if (def.autoIncrement) schemaField.autoIncrement = true;
-             if (def.notNull) schemaField.notNull = true;
-             if (def.isUnique) schemaField.isUnique = true;
-             if (def.defaultValue !== undefined) schemaField.defaultValue = def.defaultValue;
-             
-             schema.fields.push(schemaField);
+            const def = col.getDefinition();
+            const schemaField: any = { name: def.name, type: def.type };
+            if (def.isPrimary) schemaField.isPrimary = true;
+            if (def.autoIncrement) schemaField.autoIncrement = true;
+            if (def.notNull) schemaField.notNull = true;
+            if (def.isUnique) schemaField.isUnique = true;
+            if (def.defaultValue !== undefined) schemaField.defaultValue = def.defaultValue;
+
+            schema.fields.push(schemaField);
         }
-        
+
         // Apply modifications
         for (const col of this.modifiedColumns) {
-             const def = col.getDefinition();
-             const existingField = schema.fields.find(f => f.name === def.name);
-             if (existingField) {
-                 // Update type if changed (default string in builder, but maybe user didn't call type()?)
-                 // We should only update properties that were explicitly set?
-                 // ColumnBuilder defaults type to 'string'. If user does modifyColumn('x'), it has 'string'.
-                 // If the original was 'int', it becomes 'string' unless user calls type('int').
-                 // This is a limitation of current Builder design.
-                 // Ideally ColumnBuilder should start with 'undefined' type or copy existing.
-                 // But for now, we assume user sets what they change.
-                 
-                 existingField.type = def.type;
-                 if (def.isPrimary) existingField.isPrimary = true;
-                 if (def.autoIncrement) existingField.autoIncrement = true;
-                 if (def.notNull) existingField.notNull = true;
-                 if (def.isUnique) existingField.isUnique = true;
-                 if (def.defaultValue !== undefined) existingField.defaultValue = def.defaultValue;
-             }
+            const def = col.getDefinition();
+            const existingField = schema.fields.find(f => f.name === def.name);
+            if (existingField) {
+                // Update type if changed (default string in builder, but maybe user didn't call type()?)
+                // We should only update properties that were explicitly set?
+                // ColumnBuilder defaults type to 'string'. If user does modifyColumn('x'), it has 'string'.
+                // If the original was 'int', it becomes 'string' unless user calls type('int').
+                // This is a limitation of current Builder design.
+                // Ideally ColumnBuilder should start with 'undefined' type or copy existing.
+                // But for now, we assume user sets what they change.
+
+                existingField.type = def.type;
+                if (def.isPrimary) existingField.isPrimary = true;
+                if (def.autoIncrement) existingField.autoIncrement = true;
+                if (def.notNull) existingField.notNull = true;
+                if (def.isUnique) existingField.isUnique = true;
+                if (def.defaultValue !== undefined) existingField.defaultValue = def.defaultValue;
+            }
         }
-        
+
         // Apply dropped constraints
         for (const drop of this.droppedConstraints) {
             const existingField = schema.fields.find(f => f.name === drop.column);
@@ -202,7 +202,7 @@ class MockDropTableBuilder extends DropTableBuilder {
     constructor(private mockTableName: string) {
         super(mockTableName);
     }
-    
+
     useConnection(name: string): this {
         super.useConnection(name);
         return this;
@@ -237,7 +237,7 @@ class MockMigrator extends Migrator {
             // We need to parse legacy schema object to fields
             const fields = Object.entries(schema).map(([name, type]) => {
                 // Very basic parsing for legacy
-                return { name, type }; 
+                return { name, type };
             });
             // @ts-ignore
             schemas[tableNameOrUndefined] = {
@@ -247,33 +247,33 @@ class MockMigrator extends Migrator {
             return;
         }
         // @ts-ignore
-        return new MockCreateTableBuilder(this['tableName']!); 
+        return new MockCreateTableBuilder(this['tableName']!);
     }
 
     update(tableNameOrUndefined?: string, schema?: Record<string, string>): any {
         if (typeof tableNameOrUndefined === 'string' && schema) {
-             // Legacy update
-             const schemaDef = schemas[tableNameOrUndefined];
-             if (schemaDef) {
-                 for (const [name, type] of Object.entries(schema)) {
-                     schemaDef.fields.push({ name, type });
-                 }
-             }
-             return;
+            // Legacy update
+            const schemaDef = schemas[tableNameOrUndefined];
+            if (schemaDef) {
+                for (const [name, type] of Object.entries(schema)) {
+                    schemaDef.fields.push({ name, type });
+                }
+            }
+            return;
         }
         return new MockUpdateTableBuilder(this['tableName']!);
     }
 
     drop(tableNameOrUndefined?: string): any {
         if (typeof tableNameOrUndefined === 'string') {
-             delete schemas[tableNameOrUndefined];
-             return;
+            delete schemas[tableNameOrUndefined];
+            return;
         }
         return new MockDropTableBuilder(this['tableName']!);
     }
 
     truncate(tableNameOrUndefined?: string): any {
-         // Truncate affects data, not schema
+        // Truncate affects data, not schema
         return new MockTruncateTableBuilder(this['tableName']!);
     }
 }
@@ -290,8 +290,8 @@ Mapper.migrator = (tableName: string) => {
     console.log("Generating schemas from migrations...");
 
     const cwd = process.cwd();
-    const migrationsFile = path.resolve(cwd, 'src/mapper/migrations.ts');
-    const schemasFile = path.resolve(cwd, 'src/mapper/schemas.ts');
+    const migrationsFile = path.resolve(cwd, 'mapper/migrations.ts');
+    const schemasFile = path.resolve(cwd, 'mapper/schemas.ts');
 
     if (!fs.existsSync(migrationsFile)) {
         console.error("No migrations file found.");

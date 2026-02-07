@@ -27,7 +27,7 @@ else if (args[0] === 'down')
     command = 'down';
 // Determine paths
 const cwd = process.cwd();
-const srcMapperDir = path.join(cwd, 'src/mapper');
+const srcMapperDir = path.join(cwd, 'mapper');
 const migrationsFile = path.join(srcMapperDir, 'migrations.ts');
 const connectionsFile = path.join(srcMapperDir, 'connections.ts');
 const logFile = path.join(srcMapperDir, 'logs.ts');

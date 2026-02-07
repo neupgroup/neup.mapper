@@ -10,9 +10,9 @@ try {
     const { register } = await import('ts-node');
     register({
         compilerOptions: {
-            module: 'CommonJS' 
+            module: 'CommonJS'
         },
-        esm: true 
+        esm: true
     });
 } catch (e) {
     console.warn('ts-node not found or failed to register. TypeScript migrations might fail.');
@@ -27,7 +27,7 @@ else if (args[0] === 'down') command = 'down';
 
 // Determine paths
 const cwd = process.cwd();
-const srcMapperDir = path.join(cwd, 'src/mapper');
+const srcMapperDir = path.join(cwd, 'mapper');
 const migrationsFile = path.join(srcMapperDir, 'migrations.ts');
 const connectionsFile = path.join(srcMapperDir, 'connections.ts');
 const logFile = path.join(srcMapperDir, 'logs.ts');
@@ -158,9 +158,9 @@ async function runDown(migration: any) {
             const name = conn.isDefault ? 'default' : (conn.name || 'default');
             Mapper.init().connect(name, conn.type, conn);
             console.log(`Registered connection: ${name} (${conn.type})`);
-            
+
             if (conn.isDefault && conn.name && conn.name !== 'default') {
-                 Mapper.init().connect(conn.name, conn.type, conn);
+                Mapper.init().connect(conn.name, conn.type, conn);
             }
         } catch (e) {
             console.error(`Failed to register connection ${conn.name}:`, e);
@@ -191,7 +191,7 @@ async function runDown(migration: any) {
                 // If not found, maybe just log action as down? But we can't execute down logic.
             }
         } else {
-             console.log("No migrations to revert.");
+            console.log("No migrations to revert.");
         }
     } else if (command === 'refresh') {
         const toRevert = [...executedState].reverse();

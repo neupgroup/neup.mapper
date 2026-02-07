@@ -58,7 +58,7 @@ if (['postgresql', 'postgre', 'postgres'].includes(type)) {
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'src/mapper');
+const configDir = path.resolve(process.cwd(), 'mapper');
 if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
 const filePath = path.join(configDir, 'connections.ts');
@@ -97,7 +97,7 @@ if (fs.existsSync(filePath)) {
     try {
         const match = content.match(/export const connections = \s*(\[[\s\S]*\])\s*;?/);
         if (!match) {
-             throw new Error("Could not find 'connections' array in file.");
+            throw new Error("Could not find 'connections' array in file.");
         }
         // Basic syntax check using new Function (eval-like) to ensure it's valid JS/TS structure
         // We don't use the result here, just checking for syntax errors
@@ -117,10 +117,10 @@ if (fs.existsSync(filePath)) {
     // Parse logic (simplified regex/string manipulation)
     // We need to check if any connection is default
     const hasDefault = content.includes('"isDefault": true') || content.includes('isDefault: true');
-    
+
     if (!hasDefault && !isDefaultFlag) {
-         console.error('Error: No default connection exists. Please create a default connection first or use --default flag.');
-         process.exit(1);
+        console.error('Error: No default connection exists. Please create a default connection first or use --default flag.');
+        process.exit(1);
     }
 
     if (isDefaultFlag) {
@@ -128,19 +128,19 @@ if (fs.existsSync(filePath)) {
         content = content.replace(/"isDefault": true/g, '"isDefault": false');
         content = content.replace(/isDefault: true/g, 'isDefault: false');
         template.isDefault = true;
-    } 
+    }
 
     // Append logic
     const lastBracketIndex = content.lastIndexOf(']');
     if (lastBracketIndex !== -1) {
         const contentBefore = content.substring(0, lastBracketIndex).trim();
         const hasItems = contentBefore.endsWith('}') || contentBefore.endsWith(']');
-        
+
         const newConnectionStr = JSON.stringify(template, null, 4);
         const insertion = (hasItems ? ',' : '') + '\n    ' + newConnectionStr;
-        
+
         content = content.substring(0, lastBracketIndex) + insertion + '\n' + content.substring(lastBracketIndex);
-        
+
         fs.writeFileSync(filePath, content);
         console.log(`Updated connection configuration: ${filePath}`);
     } else {
@@ -151,7 +151,7 @@ if (fs.existsSync(filePath)) {
 } else {
     // New file - this becomes default automatically
     template.isDefault = true;
-    
+
     const newConnectionStr = JSON.stringify(template, null, 4);
     const fileContent = `
 export const connections = [

@@ -19,11 +19,10 @@ export async function ensureInitialized(): Promise<void> {
 
         const cwd = process.cwd();
 
-        // 1. Try Loading src/mapper/connections.ts (or dist/...)
+        // 1. Try Loading mapper/connections.ts (or src/mapper/connections.ts for backward compatibility)
         const possibleConnectionFiles = [
-            path.join(cwd, 'src/mapper/connections.ts'),
-            path.join(cwd, 'dist/mapper/connections.js'),
-            path.join(cwd, 'src/mapper/connections.js')
+            path.join(cwd, 'mapper/connections.ts'),
+            path.join(cwd, 'mapper/connections.js'),
         ];
 
         let connectionsLoaded = false;
@@ -40,7 +39,7 @@ export async function ensureInitialized(): Promise<void> {
                             init.connect(name, conn.type, conn);
                         }
                         connectionsLoaded = true;
-                        break; 
+                        break;
                     }
                 } catch (e) {
                     // console.warn(`Failed to load connections from ${file}`, e);
@@ -48,44 +47,43 @@ export async function ensureInitialized(): Promise<void> {
             }
         }
 
-        // 2. Try Loading src/mapper/schemas.ts (or dist/...)
+        // 2. Try Loading mapper/schemas.ts (or src/mapper/schemas.ts for backward compatibility)
         const possibleSchemaFiles = [
-            path.join(cwd, 'src/mapper/schemas.ts'),
-            path.join(cwd, 'dist/mapper/schemas.js'),
-            path.join(cwd, 'src/mapper/schemas.js')
+            path.join(cwd, 'mapper/schemas.ts'),
+            path.join(cwd, 'mapper/schemas.js'),
         ];
 
         for (const file of possibleSchemaFiles) {
-             if (fs.existsSync(file)) {
-                 try {
-                     const fileUrl = pathToFileURL(file).href;
-                     const mod = await import(fileUrl);
-                     if (mod.schemas) {
-                         init.loadSchemas(mod.schemas);
-                         break;
-                     }
-                 } catch (e) {
-                     // console.warn(`Failed to load schemas from ${file}`, e);
-                 }
-             }
+            if (fs.existsSync(file)) {
+                try {
+                    const fileUrl = pathToFileURL(file).href;
+                    const mod = await import(fileUrl);
+                    if (mod.schemas) {
+                        init.loadSchemas(mod.schemas);
+                        break;
+                    }
+                } catch (e) {
+                    // console.warn(`Failed to load schemas from ${file}`, e);
+                }
+            }
         }
 
         // 3. Fallback to ConfigLoader (JSON)
         if (!connectionsLoaded && init.getConnections().list().length === 0) {
-             const loader = ConfigLoader.getInstance();
-             const defaultPaths = ['./mapper.config.json', './config/mapper.json', '/etc/mapper/config.json'];
-             for (const p of defaultPaths) {
-                 try {
-                     loader.loadFromFile(p);
-                     const config = loader.getConfig();
-                     if (config) {
-                         for (const c of config.connections) {
-                             init.connect(c.name, c.type, c);
-                         }
-                         break;
-                     }
-                 } catch (e) {}
-             }
+            const loader = ConfigLoader.getInstance();
+            const defaultPaths = ['./mapper.config.json', './config/mapper.json', '/etc/mapper/config.json'];
+            for (const p of defaultPaths) {
+                try {
+                    loader.loadFromFile(p);
+                    const config = loader.getConfig();
+                    if (config) {
+                        for (const c of config.connections) {
+                            init.connect(c.name, c.type, c);
+                        }
+                        break;
+                    }
+                } catch (e) { }
+            }
         }
     })();
 

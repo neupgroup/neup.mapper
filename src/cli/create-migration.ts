@@ -20,7 +20,7 @@ if (!migrationName || migrationName.startsWith('--')) {
 }
 
 // Ensure directories exist
-const mapperDir = path.resolve(process.cwd(), 'src/mapper');
+const mapperDir = path.resolve(process.cwd(), 'mapper');
 const schemasDir = path.join(mapperDir, 'schemas');
 
 [mapperDir, schemasDir].forEach(dir => {

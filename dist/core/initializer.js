@@ -16,8 +16,10 @@ export async function ensureInitialized() {
         if (init.getConnections().list().length > 0)
             return;
         const cwd = process.cwd();
-        // 1. Try Loading src/mapper/connections.ts (or dist/...)
+        // 1. Try Loading mapper/connections.ts (or src/mapper/connections.ts for backward compatibility)
         const possibleConnectionFiles = [
+            path.join(cwd, 'mapper/connections.ts'),
+            path.join(cwd, 'mapper/connections.js'),
             path.join(cwd, 'src/mapper/connections.ts'),
             path.join(cwd, 'dist/mapper/connections.js'),
             path.join(cwd, 'src/mapper/connections.js')
@@ -43,8 +45,10 @@ export async function ensureInitialized() {
                 }
             }
         }
-        // 2. Try Loading src/mapper/schemas.ts (or dist/...)
+        // 2. Try Loading mapper/schemas.ts (or src/mapper/schemas.ts for backward compatibility)
         const possibleSchemaFiles = [
+            path.join(cwd, 'mapper/schemas.ts'),
+            path.join(cwd, 'mapper/schemas.js'),
             path.join(cwd, 'src/mapper/schemas.ts'),
             path.join(cwd, 'dist/mapper/schemas.js'),
             path.join(cwd, 'src/mapper/schemas.js')

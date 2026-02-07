@@ -35,7 +35,7 @@ if (!connectionName) {
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'src/mapper');
+const configDir = path.resolve(process.cwd(), 'mapper');
 const filePath = path.join(configDir, 'connections.ts');
 
 if (!fs.existsSync(filePath)) {
@@ -52,7 +52,7 @@ try {
     }
 
     const arrayStr = match[1];
-    
+
     // Attempt to parse
     let connections;
     try {
@@ -90,20 +90,20 @@ try {
     // Handle Type Switch
     if (typeArg) {
         let newType = typeArg.replace('--type-', '').toLowerCase();
-        
+
         // Normalize type
         if (['postgresql', 'postgre', 'postgres'].includes(newType)) newType = 'postgres';
         else if (['mariadb', 'mysql'].includes(newType)) newType = 'mysql';
         else if (['sqlitedb', 'sqlite'].includes(newType)) newType = 'sqlite';
         else if (newType === 'mongodb') newType = 'mongodb';
         else {
-             console.error(`Error: Unsupported type '${newType}'`);
-             process.exit(1);
+            console.error(`Error: Unsupported type '${newType}'`);
+            process.exit(1);
         }
 
         const conn = connections[connectionIndex];
         conn.type = newType;
-        
+
         // Reset fields based on new type
         if (newType === 'mysql' || newType === 'postgres') {
             conn.host = 'localhost';
@@ -130,7 +130,7 @@ try {
             delete conn.database;
             delete conn.filename;
         }
-        
+
         updated = true;
         console.log(`Updated '${connectionName}' type to ${newType}.`);
     }

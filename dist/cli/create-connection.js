@@ -54,7 +54,7 @@ else {
     console.log('Supported types: mysql, mariadb, postgres, postgresql, sqlite, sqlitedb, mongodb');
     process.exit(1);
 }
-const configDir = path.resolve(process.cwd(), 'src/mapper');
+const configDir = path.resolve(process.cwd(), 'mapper');
 if (!fs.existsSync(configDir))
     fs.mkdirSync(configDir, { recursive: true });
 const filePath = path.join(configDir, 'connections.ts');

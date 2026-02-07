@@ -29,7 +29,7 @@ if (!connectionName) {
     console.log('Usage: npm run update-connection <connectionName> [options]');
     process.exit(1);
 }
-const configDir = path.resolve(process.cwd(), 'src/mapper');
+const configDir = path.resolve(process.cwd(), 'mapper');
 const filePath = path.join(configDir, 'connections.ts');
 if (!fs.existsSync(filePath)) {
     console.error(`Error: Connections file not found at ${filePath}`);

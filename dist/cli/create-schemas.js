@@ -260,8 +260,8 @@ Mapper.migrator = (tableName) => {
 (async () => {
     console.log("Generating schemas from migrations...");
     const cwd = process.cwd();
-    const migrationsFile = path.resolve(cwd, 'src/mapper/migrations.ts');
-    const schemasFile = path.resolve(cwd, 'src/mapper/schemas.ts');
+    const migrationsFile = path.resolve(cwd, 'mapper/migrations.ts');
+    const schemasFile = path.resolve(cwd, 'mapper/schemas.ts');
     if (!fs.existsSync(migrationsFile)) {
         console.error("No migrations file found.");
         process.exit(1);
