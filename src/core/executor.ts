@@ -4,7 +4,6 @@ import { ensureInitialized } from './initializer.js';
 export class Executor {
     private _bindings: any[] = [];
     private _connectionName: string | null = null;
-
     private _transaction: any = null;
 
     constructor(private sql: string) { }
@@ -14,7 +13,7 @@ export class Executor {
         return this;
     }
 
-    useConnection(name: string | null): this {
+    useConnection(name: string): this {
         this._connectionName = name;
         return this;
     }
@@ -34,25 +33,29 @@ export class Executor {
 
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
+        
+        let connectionNameToUse: string;
 
-        let connName = this._connectionName;
-
-        if (!connName || connName.trim() === '') {
-            const defaultConn = connections.get('default');
-            if (!defaultConn) {
-                throw new Error('No default connection configured.');
+        if (this._connectionName) {
+            connectionNameToUse = this._connectionName;
+        } else {
+            const defaultConn = initMapper.getDefaultConnection();
+            if (defaultConn) {
+                connectionNameToUse = defaultConn.name;
+            } else {
+                // Fallback for safety if no default is configured
+                connectionNameToUse = 'default';
             }
-            connName = defaultConn.name;
         }
 
-        const conn = connections.get(connName as string);
+        const conn = connections.get(connectionNameToUse);
 
         if (!conn) {
-            throw new Error(`Connection '${connName}' not found.`);
+            throw new Error(`Connection '${connectionNameToUse}' not found.`);
         }
 
         const adapter = connections.getAdapter(conn.name);
-        if (!adapter) throw new Error(`No adapter configured for connection '${conn.name}'.`);
+        if (!adapter) throw new Error(`Adapter not found for connection '${conn.name}'.`);
 
         const options = this._transaction ? { transaction: this._transaction } : undefined;
 

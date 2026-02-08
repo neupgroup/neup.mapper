@@ -389,9 +389,20 @@ export class Migrator {
         
         // Get connection details to know DB type
         const initMapper = InitMapper.getInstance();
-        const conn = initMapper.getConnections().get(this.connectionName);
+        
+        let connectionNameToUse = this.connectionName;
+
+        // If the connection is the default placeholder, resolve the actual default connection.
+        if (connectionNameToUse === 'default') {
+            const defaultConn = initMapper.getDefaultConnection();
+            if (defaultConn) {
+                connectionNameToUse = defaultConn.name;
+            }
+        }
+
+        const conn = initMapper.getConnections().get(connectionNameToUse);
         if (!conn) {
-             throw new Error(`Connection '${this.connectionName}' not found.`);
+             throw new Error(`Connection '${connectionNameToUse}' not found.`);
         }
         
         const type = conn?.type || 'sqlite'; // Default to sqlite if not found
@@ -403,7 +414,7 @@ export class Migrator {
              createSql += '\n)';
              
              try {
-                await new Executor(createSql).useConnection(this.connectionName).execute();
+                await new Executor(createSql).useConnection(connectionNameToUse).execute();
              } catch (e: any) {
                  console.error("Create Table Failed:", e.message);
                  throw e;
@@ -447,7 +458,7 @@ export class Migrator {
     
                 if (sql) {
                     try {
-                        await new Executor(sql).useConnection(this.connectionName).execute();
+                        await new Executor(sql).useConnection(connectionNameToUse).execute();
                     } catch (err: any) {
                         console.error(`Migration Action Failed: ${err.message}`);
                     }

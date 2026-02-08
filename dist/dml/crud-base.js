@@ -70,11 +70,18 @@ export class SelectBuilder {
     async exec() {
         await ensureInitialized();
         // Resolve Connection
-        let connName = this._connection;
-        if (!connName) {
+        let connName;
+        if (this._connection) {
+            connName = this._connection;
+        }
+        else {
             const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
+            }
+            else {
+                const defaultConn = InitMapper.getInstance().getDefaultConnection();
+                connName = defaultConn ? defaultConn.name : 'default';
             }
         }
         let sql = `SELECT ${this._select} FROM ${this.table}`;
@@ -111,11 +118,18 @@ export class InsertBuilder {
     async exec() {
         await ensureInitialized();
         // Resolve Connection
-        let connName = this._connection;
-        if (!connName) {
+        let connName;
+        if (this._connection) {
+            connName = this._connection;
+        }
+        else {
             const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
+            }
+            else {
+                const defaultConn = InitMapper.getInstance().getDefaultConnection();
+                connName = defaultConn ? defaultConn.name : 'default';
             }
         }
         // Apply default values from schema definition
@@ -182,11 +196,18 @@ export class UpdateBuilder {
     async exec() {
         await ensureInitialized();
         // Resolve Connection
-        let connName = this._connection;
-        if (!connName) {
+        let connName;
+        if (this._connection) {
+            connName = this._connection;
+        }
+        else {
             const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
+            }
+            else {
+                const defaultConn = InitMapper.getInstance().getDefaultConnection();
+                connName = defaultConn ? defaultConn.name : 'default';
             }
         }
         const keys = Object.keys(this.data);
@@ -228,11 +249,18 @@ export class DeleteBuilder {
     async exec() {
         await ensureInitialized();
         // Resolve Connection
-        let connName = this._connection;
-        if (!connName) {
+        let connName;
+        if (this._connection) {
+            connName = this._connection;
+        }
+        else {
             const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
+            }
+            else {
+                const defaultConn = InitMapper.getInstance().getDefaultConnection();
+                connName = defaultConn ? defaultConn.name : 'default';
             }
         }
         let sql = `DELETE FROM ${this.table}`;

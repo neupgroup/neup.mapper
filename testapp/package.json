@@ -11,7 +11,7 @@
     "create-schemas": "node ../dist/cli/create-schemas.js"
   },
   "dependencies": {
-    "@neupgroup/mapper": "file:./..",
+    "@neupgroup/mapper": "file:..",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

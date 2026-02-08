@@ -29,21 +29,27 @@ export class Executor {
         await ensureInitialized();
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
-        let connName = this._connectionName;
-        if (!connName || connName.trim() === '') {
-            const defaultConn = connections.get('default');
-            if (!defaultConn) {
-                throw new Error('No default connection configured.');
-            }
-            connName = defaultConn.name;
+        let connectionNameToUse;
+        if (this._connectionName) {
+            connectionNameToUse = this._connectionName;
         }
-        const conn = connections.get(connName);
+        else {
+            const defaultConn = initMapper.getDefaultConnection();
+            if (defaultConn) {
+                connectionNameToUse = defaultConn.name;
+            }
+            else {
+                // Fallback for safety if no default is configured
+                connectionNameToUse = 'default';
+            }
+        }
+        const conn = connections.get(connectionNameToUse);
         if (!conn) {
-            throw new Error(`Connection '${connName}' not found.`);
+            throw new Error(`Connection '${connectionNameToUse}' not found.`);
         }
         const adapter = connections.getAdapter(conn.name);
         if (!adapter)
-            throw new Error(`No adapter configured for connection '${conn.name}'.`);
+            throw new Error(`Adapter not found for connection '${conn.name}'.`);
         const options = this._transaction ? { transaction: this._transaction } : undefined;
         if (typeof adapter.raw === 'function') {
             return adapter.raw(this.sql, this._bindings, options);
