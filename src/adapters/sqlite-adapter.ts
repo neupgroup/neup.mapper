@@ -1,5 +1,7 @@
 import type { DbAdapter, QueryOptions, DocumentData } from '../orm/types.js';
 import { createRequire } from 'module';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const require = createRequire(import.meta.url);
 
@@ -18,10 +20,17 @@ export class SQLiteAdapter implements DbAdapter {
 
     constructor(config: SQLiteConfig) {
         try {
+            if (config.filename !== ':memory:') {
+                const absPath = path.resolve(config.filename);
+                if (!fs.existsSync(absPath)) {
+                    throw new Error(`could not find the file at [${absPath}] for sqlite database.`);
+                }
+            }
             // Dynamically import sqlite3 to avoid bundling if not used
             this.sqlite3 = require('sqlite3').verbose();
             this.db = new this.sqlite3.Database(config.filename, config.mode);
         } catch (error: any) {
+            if (error.message.includes('could not find the file')) throw error;
             throw new Error(
                 `Failed to initialize SQLite adapter: ${error.message}\n` +
                 `Make sure to install sqlite3: npm install sqlite3`

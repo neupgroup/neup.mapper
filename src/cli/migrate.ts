@@ -210,6 +210,11 @@ async function saveMigrationState(fileInfo: ConfigInfo, migrationId: string, act
         ? rawMigrations
         : Object.values(rawMigrations).sort((a: any, b: any) => (a.timestamp || a.id).localeCompare(b.timestamp || b.id));
 
+    if (migrations.length === 0) {
+        console.error("Please proposal some changes before requesting migration.");
+        process.exit(1);
+    }
+
     // Helper to get executed IDs from config object
     function getExecutedIds(migrationsList: any[]) {
         return migrationsList.filter((m: any) => m.status === 'completed' || m.status === 'success').map((m: any) => m.id);
@@ -261,15 +266,20 @@ async function saveMigrationState(fileInfo: ConfigInfo, migrationId: string, act
             if (!executedIds.includes(m.id)) await runUp(m);
         }
     } else if (command === 'up') {
-        for (const m of migrations) {
-            if (!executedIds.includes(m.id)) { await runUp(m); break; }
+        const pending = migrations.filter((m: any) => !executedIds.includes(m.id));
+        if (pending.length === 0) {
+            console.log("You're on top of all proposed changes.");
+            process.exit(0);
         }
+        await runUp(pending[0]);
     } else if (command === 'down') {
         const lastId = executedIds[executedIds.length - 1];
-        if (lastId) {
-            const m = migrations.find((mig: any) => mig.id === lastId);
-            if (m) await runDown(m);
-        } else { console.log("No migrations to revert"); }
+        if (!lastId) {
+            console.log("You're at the bottom of the proposed changes.");
+            process.exit(0);
+        }
+        const m = migrations.find((mig: any) => mig.id === lastId);
+        if (m) await runDown(m);
     } else if (command === 'refresh') {
         const toRevert = [...executedIds].reverse();
         for (const id of toRevert) {
