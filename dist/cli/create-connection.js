@@ -122,7 +122,7 @@ else if (fs.existsSync(jsonConfigPath)) {
 else {
     // Create new TS config
     template.isDefault = true;
-    const initialContent = `import { MapperConfig } from '@neupgroup/mapper';
+    const initialContent = `import type { MapperConfig } from '@neupgroup/mapper';
 
 export const config: MapperConfig = {
   connections: [

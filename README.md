@@ -27,17 +27,17 @@ npm install @neupgroup/mapper
 
 ## 🚀 Quick Start
 
-The simplest way to get started is using the new simplified API.
+The simplest way to get started is using the new simplified API with configuration files.
 
-### 1. Automatic Initialization (Zero-Config)
+### 1. Automatic Initialization
 
-If you have created connections using the CLI (see below), `Mapper` will automatically load them. You don't need to manually initialize!
+Ensure you have a `mapper.config.ts` file in your project root. `Mapper` will automatically load connections and schemas from this file.
 
 ```typescript
 import { Mapper } from '@neupgroup/mapper';
 
 // Just start querying!
-// The default connection will be automatically loaded.
+// The default connection defined in mapper.config.ts will be used.
 const users = await Mapper.base('users')
     .select(['id', 'name'])
     .where('id', 1)
@@ -46,7 +46,7 @@ const users = await Mapper.base('users')
 
 ### 2. Manual Initialization (Optional)
 
-If you prefer to control connections manually or don't use the CLI:
+If you prefer to control connections manually or don't use the configuration file:
 
 ```typescript
 import { Mapper } from '@neupgroup/mapper';
@@ -62,7 +62,7 @@ const users = await Mapper.base('users').select().get();
 
 ## 🔌 Connections & Configuration
 
-You can manage database connections via the CLI or programmatically.
+You can manage database connections via the CLI, which updates your `mapper.config.ts` file.
 
 ### Creating Connections (CLI)
 
@@ -73,9 +73,9 @@ Use the CLI to create and register new connections.
 npm run create-connection myapp sqlite
 ```
 
-This will create/update `src/mapper/connections.ts`.
-*   **SQLite**: Databases are saved as `src/mapper/<name>.db`.
-*   **MySQL/Postgres**: Defaults to `localhost` with user `root` (you should edit the generated file).
+This will create/update `mapper.config.ts` in your project root.
+*   **SQLite**: Databases are saved as defined in the config.
+*   **MySQL/Postgres**: Connection details are added to the config (you should edit the password/host as needed).
 
 ### Setting Default Connection
 
@@ -83,13 +83,7 @@ To set a connection as the default (used when no connection is specified):
 
 ```bash
 # Set 'myapp' as the default connection
-npm run update-connection myapp --default
-```
-
-Or during creation:
-
-```bash
-npm run create-connection production postgres --default
+npm run create-connection myapp sqlite --default
 ```
 
 ### Programmatic Connection
@@ -111,11 +105,11 @@ Mapper.init().connect('analytics', 'mysql', {
 
 ## 📦 Database Migrations
 
-Migrations allow you to manage your database schema using version-controlled TypeScript files.
+Migrations allow you to manage your database schema using version-controlled TypeScript functions within `migrations.config.ts`.
 
 ### 1. Creating a Migration
 
-Generate a new migration file in `src/mapper/migrations.ts`:
+Generate a new migration entry in `migrations.config.ts`:
 
 ```bash
 npm run create-migration create_users_table
@@ -127,13 +121,15 @@ To target a specific connection for the migration:
 npm run create-migration add_logs --conn analytics
 ```
 
+**Multiple Migrations per Table**: You can create multiple migrations with the same name (e.g., `users`). They will have unique timestamps and be executed in chronological order.
+
 ### 2. Writing Migrations
 
-Edit the generated entry in `src/mapper/migrations.ts`.
+Edit the generated entry in `migrations.config.ts`. Migrations are defined as executable functions.
 
 #### Creating a Table
 ```typescript
-async up() {
+up: async (Mapper: any) => {
     await Mapper.migrator('users').create()
         .addColumn('id').type('int').autoIncrement().isPrimary()
         .addColumn('username').type('string').unique().notNull()
@@ -141,45 +137,38 @@ async up() {
         .addColumn('is_active').type('boolean').default(true)
         .addColumn('created_at').type('date').default('NOW()')
         .exec();
-}
+},
 ```
 
 #### Updating a Table
 ```typescript
-async up() {
+up: async (Mapper: any) => {
     await Mapper.migrator('users').update()
         .addColumn('age').type('int')
         .dropColumn('old_field')
         .exec();
-}
+},
 ```
 
 #### Dropping a Table
 ```typescript
-async down() {
+down: async (Mapper: any) => {
     await Mapper.migrator('users').drop().exec();
-}
-```
-
-#### Truncating a Table
-```typescript
-async up() {
-    await Mapper.migrator('logs').truncate().exec();
-}
+},
 ```
 
 #### Using Specific Connections
 If you need to run a migration on a non-default connection:
 
 ```typescript
-async up() {
+up: async (Mapper: any) => {
     const migrator = Mapper.migrator('analytics_data');
     migrator.useConnection('analytics'); // Explicitly use 'analytics' connection
     
     await migrator.create()
         .addColumn('id').type('int').isPrimary()
         .exec();
-}
+},
 ```
 
 ### 3. Running Migrations
@@ -201,13 +190,24 @@ npm run migrate refresh
 
 ## 📑 Schema Management
 
-After defining your database structure via migrations, generate the static schema definitions. This file (`src/mapper/schemas.ts`) is used by `Mapper` for validation and query building.
+Define your table schemas in `mapper.config.ts` to enable strict validation with `Mapper.schemas`.
 
-```bash
-npm run create-schemas
+```typescript
+export const config: MapperConfig = {
+    connections: [ ... ],
+    schemas: [
+        {
+            table: "users",
+            connection: "default", // Optional
+            columns: {
+                id: { type: "integer", primaryKey: true, autoIncrement: true },
+                username: { type: "string", length: 255, nullable: false },
+                created_at: { type: "timestamp", default: "CURRENT_TIMESTAMP" }
+            }
+        }
+    ]
+};
 ```
-
-This command scans your migrations and reconstructs the schema state. Always run this after `migrate up`.
 
 ---
 
@@ -217,7 +217,7 @@ There are two ways to interact with your data: **Validated** (using Schemas) and
 
 ### 1. Validated Operations (`Mapper.schemas`)
 
-Use this when you want strict validation against your generated schema. Fields not defined in `src/mapper/schemas.ts` will be stripped.
+Use this when you want strict validation against your defined schema in `mapper.config.ts`. Fields not defined in the schema will be stripped.
 
 ```typescript
 // Insert (Validated)
@@ -244,7 +244,7 @@ await Mapper.schemas('users')
 
 ### 2. Standard Operations (`Mapper.base`)
 
-Use this for direct access. It bypasses schema validation but still handles connection logic. Useful for dynamic queries or tables not in your schema file.
+Use this for direct access. It bypasses schema validation but still handles connection logic. Useful for dynamic queries or tables not in your schema configuration.
 
 ```typescript
 // Insert
@@ -312,7 +312,7 @@ const result = await Mapper.raw(`
 ## 🏆 Best Practices
 
 1.  **Use Migrations**: Always change your DB schema via migrations, never manually.
-2.  **Sync Schemas**: Run `npm run create-schemas` after every migration change to keep your code in sync.
+2.  **Define Schemas**: Keep your `mapper.config.ts` schemas in sync with your database structure.
 3.  **Type Safety**: While Mapper returns `any`, define TypeScript interfaces for your models for better developer experience.
 
 ```typescript
@@ -373,4 +373,3 @@ const tx = await Mapper.beginTransaction('analytics'); // 'analytics' is the con
 The transaction handle automatically knows which connection it belongs to, so you don't need to specify it again when committing or rolling back.
 
 **Note:** For MongoDB, transactions require a Replica Set.
-
