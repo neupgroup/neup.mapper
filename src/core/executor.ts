@@ -36,18 +36,21 @@ export class Executor {
         
         let connectionNameToUse: string;
 
+        // If a connection name is explicitly provided, use it.
         if (this._connectionName) {
             connectionNameToUse = this._connectionName;
         } else {
-            const defaultConn = initMapper.getDefaultConnection();
+            // If no connection is provided, find the default one.
+            const defaultConn = connections.getDefault();
             if (defaultConn) {
                 connectionNameToUse = defaultConn.name;
             } else {
-                // Fallback for safety if no default is configured
-                connectionNameToUse = 'default';
+                // If no connection is specified and no default exists, throw a clear error.
+                throw new Error("No connection specified and no default connection is configured. Set a connection with 'isDefault: true' in your connections file.");
             }
         }
 
+        // The .get() method in Connections correctly handles resolving 'default' to the isDefault connection.
         const conn = connections.get(connectionNameToUse);
 
         if (!conn) {
@@ -63,7 +66,7 @@ export class Executor {
             return (adapter as any).raw(this.sql, this._bindings, options);
         }
         if (typeof (adapter as any).query === 'function') {
-            return (adapter as any).query(this.sql, this._bindings, options); // Assuming query also supports options if raw does
+            return (adapter as any).query(this.sql, this._bindings, options);
         }
         throw new Error(`Connection '${conn.name}' does not support raw queries.`);
     }

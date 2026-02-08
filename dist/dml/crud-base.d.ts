@@ -6,15 +6,22 @@ export declare class CrudBase {
     update(data: Record<string, any>): UpdateBuilder;
     delete(): DeleteBuilder;
 }
-export declare class SelectBuilder {
-    private table;
+/**
+ * Base class for query builders to share connection resolution logic.
+ */
+declare class BaseBuilder {
+    protected table: string;
+    protected _connection: string | null;
+    protected _transaction: any;
+    constructor(table: string);
+    protected resolveConnectionName(): Promise<string>;
+}
+export declare class SelectBuilder extends BaseBuilder {
     private _where;
     private _bindings;
     private _limit;
     private _offset;
     private _select;
-    private _connection;
-    private _transaction;
     constructor(table: string, fields: string[]);
     useTransaction(transaction: any): this;
     useConnection(name: string): this;
@@ -25,38 +32,30 @@ export declare class SelectBuilder {
     getOne(): Promise<any>;
     exec(): Promise<any[]>;
 }
-export declare class InsertBuilder {
-    private table;
+export declare class InsertBuilder extends BaseBuilder {
     private data;
-    private _connection;
-    private _transaction;
     constructor(table: string, data: Record<string, any>);
     useConnection(name: string): this;
     useTransaction(transaction: any): this;
     exec(): Promise<any>;
 }
-export declare class UpdateBuilder {
-    private table;
+export declare class UpdateBuilder extends BaseBuilder {
     private data;
     private _where;
     private _bindings;
-    private _connection;
-    private _transaction;
     constructor(table: string, data: Record<string, any>);
     useConnection(name: string): this;
     useTransaction(transaction: any): this;
     where(field: string, value: any, operator?: string): this;
     exec(): Promise<any>;
 }
-export declare class DeleteBuilder {
-    private table;
+export declare class DeleteBuilder extends BaseBuilder {
     private _where;
     private _bindings;
-    private _connection;
-    private _transaction;
     constructor(table: string);
     useConnection(name: string): this;
     useTransaction(transaction: any): this;
     where(field: string, value: any, operator?: string): this;
     exec(): Promise<any>;
 }
+export {};

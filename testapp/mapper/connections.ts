@@ -1,8 +1,8 @@
 export const connections = [
     {
-    "name": "sqlite",
-    "type": "sqlite",
-    "filename": "sqlite.db",
-    "isDefault": true
-}
+        "name": "default",
+        "type": "sqlite",
+        "filename": "sqlite.db",
+        "isDefault": true
+    }
 ];

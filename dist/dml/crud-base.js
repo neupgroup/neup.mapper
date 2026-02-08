@@ -24,15 +24,39 @@ export class CrudBase {
         return builder;
     }
 }
-export class SelectBuilder {
-    constructor(table, fields) {
+/**
+ * Base class for query builders to share connection resolution logic.
+ */
+class BaseBuilder {
+    constructor(table) {
         this.table = table;
+        this._connection = null;
+        this._transaction = null;
+    }
+    async resolveConnectionName() {
+        await ensureInitialized();
+        if (this._connection) {
+            return this._connection;
+        }
+        const initMapper = InitMapper.getInstance();
+        const schemaDef = initMapper.getSchemaDef(this.table);
+        if (schemaDef && schemaDef.usesConnection) {
+            return schemaDef.usesConnection;
+        }
+        const defaultConn = initMapper.getDefaultConnection();
+        if (defaultConn) {
+            return defaultConn.name;
+        }
+        throw new Error("No connection specified and no default connection is configured. Set a connection with 'isDefault: true' in your connections file.");
+    }
+}
+export class SelectBuilder extends BaseBuilder {
+    constructor(table, fields) {
+        super(table);
         this._where = [];
         this._bindings = [];
         this._limit = null;
         this._offset = null;
-        this._connection = null;
-        this._transaction = null;
         this._select = fields.join(', ');
     }
     useTransaction(transaction) {
@@ -68,22 +92,7 @@ export class SelectBuilder {
         return res[0] || null;
     }
     async exec() {
-        await ensureInitialized();
-        // Resolve Connection
-        let connName;
-        if (this._connection) {
-            connName = this._connection;
-        }
-        else {
-            const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
-            if (schemaDef && schemaDef.usesConnection) {
-                connName = schemaDef.usesConnection;
-            }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
-        }
+        const connName = await this.resolveConnectionName();
         let sql = `SELECT ${this._select} FROM ${this.table}`;
         if (this._where.length > 0) {
             sql += ` WHERE ${this._where.join(' AND ')}`;
@@ -97,12 +106,10 @@ export class SelectBuilder {
         return new Executor(sql).bind(this._bindings).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
-export class InsertBuilder {
+export class InsertBuilder extends BaseBuilder {
     constructor(table, data) {
-        this.table = table;
+        super(table);
         this.data = data;
-        this._connection = null;
-        this._transaction = null;
     }
     useConnection(name) {
         this._connection = name;
@@ -116,30 +123,13 @@ export class InsertBuilder {
         return this;
     }
     async exec() {
-        await ensureInitialized();
-        // Resolve Connection
-        let connName;
-        if (this._connection) {
-            connName = this._connection;
-        }
-        else {
-            const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
-            if (schemaDef && schemaDef.usesConnection) {
-                connName = schemaDef.usesConnection;
-            }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
-        }
+        const connName = await this.resolveConnectionName();
         // Apply default values from schema definition
         const schemaManager = InitMapper.getInstance().getSchemaManager();
         try {
-            // Try to get schema definition to apply defaults
             const schemas = schemaManager.list();
             const schemaDef = schemas.find(s => s.collectionName === this.table || s.name === this.table);
             if (schemaDef && schemaDef.fields) {
-                // Apply defaults for missing fields
                 for (const field of schemaDef.fields) {
                     if (this.data[field.name] === undefined && field.defaultValue !== undefined) {
                         if (field.defaultValue === 'NOW()') {
@@ -153,9 +143,9 @@ export class InsertBuilder {
             }
         }
         catch (e) {
-            // Schema not found or error accessing it, continue without defaults
+            // Schema not found, continue without defaults
         }
-        // Convert Date objects to ISO strings for database compatibility
+        // Convert Date objects to ISO strings
         for (const key in this.data) {
             if (this.data[key] instanceof Date) {
                 this.data[key] = this.data[key].toISOString();
@@ -168,14 +158,12 @@ export class InsertBuilder {
         return new Executor(sql).bind(values).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
-export class UpdateBuilder {
+export class UpdateBuilder extends BaseBuilder {
     constructor(table, data) {
-        this.table = table;
+        super(table);
         this.data = data;
         this._where = [];
         this._bindings = [];
-        this._connection = null;
-        this._transaction = null;
     }
     useConnection(name) {
         this._connection = name;
@@ -194,22 +182,7 @@ export class UpdateBuilder {
         return this;
     }
     async exec() {
-        await ensureInitialized();
-        // Resolve Connection
-        let connName;
-        if (this._connection) {
-            connName = this._connection;
-        }
-        else {
-            const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
-            if (schemaDef && schemaDef.usesConnection) {
-                connName = schemaDef.usesConnection;
-            }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
-        }
+        const connName = await this.resolveConnectionName();
         const keys = Object.keys(this.data);
         const values = Object.values(this.data);
         const setClause = keys.map(k => `${k} = ?`).join(', ');
@@ -222,13 +195,11 @@ export class UpdateBuilder {
         return new Executor(sql).bind(allBindings).useConnection(connName).useTransaction(this._transaction).execute();
     }
 }
-export class DeleteBuilder {
+export class DeleteBuilder extends BaseBuilder {
     constructor(table) {
-        this.table = table;
+        super(table);
         this._where = [];
         this._bindings = [];
-        this._connection = null;
-        this._transaction = null;
     }
     useConnection(name) {
         this._connection = name;
@@ -247,22 +218,7 @@ export class DeleteBuilder {
         return this;
     }
     async exec() {
-        await ensureInitialized();
-        // Resolve Connection
-        let connName;
-        if (this._connection) {
-            connName = this._connection;
-        }
-        else {
-            const schemaDef = InitMapper.getInstance().getSchemaDef(this.table);
-            if (schemaDef && schemaDef.usesConnection) {
-                connName = schemaDef.usesConnection;
-            }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
-        }
+        const connName = await this.resolveConnectionName();
         let sql = `DELETE FROM ${this.table}`;
         if (this._where.length > 0) {
             sql += ` WHERE ${this._where.join(' AND ')}`;
