@@ -1,6 +1,6 @@
 import { ConnectionType } from './index.js';
-import { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig } from './config-loader.js';
-export { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig };
+import { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig, MigrationsConfig } from './config-loader.js';
+export { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig, MigrationsConfig };
 export declare class ConfigBasedMapper {
     private mapper;
     private configLoader;

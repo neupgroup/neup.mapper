@@ -67,7 +67,8 @@ export type {
   DatabaseConnectionConfig,
   ApiConnectionConfig,
   SqliteConnectionConfig,
-  ConfigSchema
+  ConfigSchema,
+  MigrationsConfig
 } from './config.js';
 
 // Export database adapters

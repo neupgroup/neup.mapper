@@ -34,10 +34,44 @@ export interface ApiConnectionConfig {
 export type ConnectionConfig = DatabaseConnectionConfig | ApiConnectionConfig | SqliteConnectionConfig;
 
 export interface ConfigSchema {
-  name: string;
+  name?: string; // Optional if table is provided
+  table?: string; // Alternative to collection/name
   connection: string;
-  collection: string;
+  collection?: string;
+  columns?: Record<string, any>;
   structure?: Record<string, string> | Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' | 'int';[key: string]: any }>;
+}
+
+export interface MigrationObject {
+  id: string;
+  name: string;
+  timestamp: string;
+  status: 'pending' | 'completed' | 'failed' | 'success';
+  up: (Mapper: any) => Promise<void>;
+  down: (Mapper: any) => Promise<void>;
+  executedAt?: string;
+  connection?: string;
+  checksum?: string;
+  [key: string]: any;
+}
+
+export interface MigrationsConfig {
+  migrations: Record<string, MigrationObject>;
+  logs?: Array<{
+    migrationId: string | number;
+    timestamp: string;
+    action: string;
+    status: string;
+    duration: number;
+    message?: string;
+    [key: string]: any;
+  }>;
+  settings?: {
+    migrationsDirectory?: string;
+    migrationsTable?: string;
+    autoRun?: boolean;
+    [key: string]: any;
+  };
 }
 
 export interface MapperConfig {

@@ -1,23 +1,25 @@
 import { ConnectionType } from './index.js';
 import { createMapper, Mapper } from './mapper.js';
-import { 
-  ConfigLoader, 
-  MapperConfig, 
-  ConnectionConfig, 
-  ConfigSchema, 
-  ApiConnectionConfig, 
-  DatabaseConnectionConfig, 
-  SqliteConnectionConfig 
+import {
+  ConfigLoader,
+  MapperConfig,
+  ConnectionConfig,
+  ConfigSchema,
+  ApiConnectionConfig,
+  DatabaseConnectionConfig,
+  SqliteConnectionConfig,
+  MigrationsConfig
 } from './config-loader.js';
 
-export { 
-  ConfigLoader, 
-  MapperConfig, 
-  ConnectionConfig, 
-  ConfigSchema, 
-  ApiConnectionConfig, 
-  DatabaseConnectionConfig, 
-  SqliteConnectionConfig 
+export {
+  ConfigLoader,
+  MapperConfig,
+  ConnectionConfig,
+  ConfigSchema,
+  ApiConnectionConfig,
+  DatabaseConnectionConfig,
+  SqliteConnectionConfig,
+  MigrationsConfig
 };
 
 export class ConfigBasedMapper {
@@ -76,11 +78,22 @@ export class ConfigBasedMapper {
   }
 
   private initializeSchema(config: ConfigSchema): void {
-    const schemaBuilder = this.mapper.schema(config.name);
-    schemaBuilder.use({ connection: config.connection, collection: config.collection });
+    const name = config.name || config.table;
+    if (!name) {
+      throw new Error('Schema configuration missing name or table');
+    }
+
+    const schemaBuilder = this.mapper.schema(name);
+    const collection = config.collection || config.table || name;
+
+    schemaBuilder.use({ connection: config.connection, collection });
 
     if (config.structure) {
       schemaBuilder.setStructure(config.structure as any);
+    } else if (config.columns) {
+      // Convert columns format to structure if needed, or pass as is if supported
+      // Assuming setStructure handles Record<string, any> which resembles columns definition
+      schemaBuilder.setStructure(config.columns as any);
     }
   }
 
@@ -121,7 +134,7 @@ export class ConfigBasedMapper {
     }
     const query = Mapper.base(schemaName).select();
     if (filters) {
-        Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+      Object.entries(filters).forEach(([k, v]) => query.where(k, v));
     }
     return query.get();
   }
@@ -132,7 +145,7 @@ export class ConfigBasedMapper {
     }
     const query = Mapper.base(schemaName).select();
     if (filters) {
-        Object.entries(filters).forEach(([k, v]) => query.where(k, v));
+      Object.entries(filters).forEach(([k, v]) => query.where(k, v));
     }
     return query.getOne();
   }

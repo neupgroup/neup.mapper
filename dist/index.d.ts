@@ -19,7 +19,7 @@ export { Migrator } from './ddl/migrator.js';
 export { StaticMapper, RawBuilder, BaseDispatcher } from './fluent-mapper.js';
 export type { FluentConnectionBuilder, FluentConnectionSelector, FluentMapper } from './fluent-mapper.js';
 export { ConfigBasedMapper, ConfigLoader, createConfigMapper, getConfigMapper, createDefaultMapper } from './config.js';
-export type { MapperConfig, DatabaseConnectionConfig, ApiConnectionConfig, SqliteConnectionConfig, ConfigSchema } from './config.js';
+export type { MapperConfig, DatabaseConnectionConfig, ApiConnectionConfig, SqliteConnectionConfig, ConfigSchema, MigrationsConfig } from './config.js';
 export { MySQLAdapter, createMySQLAdapter, PostgreSQLAdapter, createPostgreSQLAdapter, MongoDBAdapter, createMongoDBAdapter, SQLiteAdapter, createSQLiteAdapter, createAdapter, createAdapterFromUrl, autoAttachAdapter } from './adapters/index.js';
 export type { MySQLConfig, PostgreSQLConfig, MongoDBConfig, SQLiteConfig, AdapterConfig } from './adapters/index.js';
 export { MapperError, AdapterMissingError, UpdatePayloadMissingError, DocumentMissingIdError, ConnectionExistingError, ConnectionUnknownError, SchemaExistingError, SchemaMissingError, SchemaConfigurationError, } from './errors.js';

@@ -46,10 +46,20 @@ export class ConfigBasedMapper {
         }
     }
     initializeSchema(config) {
-        const schemaBuilder = this.mapper.schema(config.name);
-        schemaBuilder.use({ connection: config.connection, collection: config.collection });
+        const name = config.name || config.table;
+        if (!name) {
+            throw new Error('Schema configuration missing name or table');
+        }
+        const schemaBuilder = this.mapper.schema(name);
+        const collection = config.collection || config.table || name;
+        schemaBuilder.use({ connection: config.connection, collection });
         if (config.structure) {
             schemaBuilder.setStructure(config.structure);
+        }
+        else if (config.columns) {
+            // Convert columns format to structure if needed, or pass as is if supported
+            // Assuming setStructure handles Record<string, any> which resembles columns definition
+            schemaBuilder.setStructure(config.columns);
         }
     }
     // Delegate methods to the underlying mapper

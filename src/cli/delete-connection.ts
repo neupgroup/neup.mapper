@@ -29,60 +29,47 @@ if (!connectionName) {
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'mapper');
-const filePath = path.join(configDir, 'connections.ts');
+const configFilePath = path.resolve(process.cwd(), 'mapper.config.json');
 
-if (!fs.existsSync(filePath)) {
-    console.error(`Error: Connections file not found at ${filePath}`);
+if (!fs.existsSync(configFilePath)) {
+    console.error(`Error: ${configFilePath} does not exist.`);
     process.exit(1);
 }
 
-let content = fs.readFileSync(filePath, 'utf-8');
-
 try {
-    // 1. Extract the array content
-    const match = content.match(/export const connections = \s*(\[[\s\S]*\])\s*;?/);
-    if (!match) {
-        throw new Error("Could not find 'connections' array in file.");
+    const content = fs.readFileSync(configFilePath, 'utf-8');
+    const config = JSON.parse(content);
+
+    if (!config.connections || !Array.isArray(config.connections)) {
+        console.error('Error: No connections found in mapper.config.json');
+        process.exit(1);
     }
 
-    const arrayStr = match[1];
+    const connectionIndex = config.connections.findIndex((conn: any) => conn.name === connectionName);
 
-    // 2. Parse it
-    let connections;
-    try {
-        connections = new Function(`return ${arrayStr}`)();
-    } catch (parseError) {
-        throw new Error("Syntax error in connections file.");
-    }
-
-    if (!Array.isArray(connections)) {
-        throw new Error("Parsed content is not an array.");
-    }
-
-    // 3. Filter out the connection
-    const initialLength = connections.length;
-    const newConnections = connections.filter((c: any) => c.name !== connectionName);
-
-    if (newConnections.length === initialLength) {
+    if (connectionIndex === -1) {
         console.error(`Error: Connection '${connectionName}' not found.`);
         process.exit(1);
     }
 
-    // 4. Check if we deleted the default connection
-    const deletedWasDefault = connections.find((c: any) => c.name === connectionName)?.isDefault;
-    if (deletedWasDefault && newConnections.length > 0) {
-        console.warn(`Warning: You deleted the default connection. '${newConnections[0].name}' is now the default.`);
-        newConnections[0].isDefault = true;
+    const connection = config.connections[connectionIndex];
+    const wasDefault = connection.isDefault;
+
+    // Remove the connection
+    config.connections.splice(connectionIndex, 1);
+
+    // If we deleted the default connection and there are others, make the first one default
+    if (wasDefault && config.connections.length > 0) {
+        config.connections[0].isDefault = true;
+        console.log(`Note: '${config.connections[0].name}' is now the default connection.`);
     }
 
-    // 5. Rewrite file
-    const newContent = `export const connections = ${JSON.stringify(newConnections, null, 4)};\n`;
-    fs.writeFileSync(filePath, newContent);
-    console.log(`Deleted connection '${connectionName}'. Updated ${filePath}`);
+    // Write back to file
+    fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2) + '\n');
+    console.log(`✓ Deleted connection '${connectionName}' from ${configFilePath}`);
 
-} catch (e: any) {
-    console.warn(`Warning: The file ${filePath} seems to be broken or has invalid syntax.`);
-    console.warn('Please repair or delete the file to continue.');
+} catch (e) {
+    console.error(`Error: Failed to parse or update ${configFilePath}`);
+    console.error(e);
     process.exit(1);
 }

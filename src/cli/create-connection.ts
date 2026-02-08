@@ -11,8 +11,7 @@ Usage: npm run create-connection <connectionName> <type> [--default]
 
 Arguments:
   connectionName   Name for your connection (a-z, 0-9 only, no special chars)
-  type             Database type.
-                   Supported types: mysql, mariadb, postgres, postgresql, sqlite, sqlitedb, mongodb
+  type             Database type (mysql, postgres, sqlite, mongodb)
 
 Options:
   --default        Make this connection the default one
@@ -28,41 +27,33 @@ const rawName = args[0];
 const rawType = args[1];
 const isDefaultFlag = args.includes('--default');
 
-// 1. Validate existence
 if (!rawName || !rawType) {
     console.error('Error: Connection name and type are required.');
-    console.log('Usage: npm run create-connection <connectionName> <type> [--default]');
     process.exit(1);
 }
 
-// 2. Normalize and Validate Name
 const connectionName = rawName.toLowerCase();
 if (!/^[a-z0-9]+$/.test(connectionName)) {
-    console.error('Error: Connection name must contain only letters (a-z) and numbers (0-9). No special characters allowed.');
+    console.error('Error: Connection name must contain only letters (a-z) and numbers (0-9).');
     process.exit(1);
 }
 
-// 3. Normalize and Map Type
+// Map Type
 let type = rawType.toLowerCase();
-if (['postgresql', 'postgre', 'postgres'].includes(type)) {
-    type = 'postgres';
-} else if (['mariadb', 'mysql'].includes(type)) {
-    type = 'mysql';
-} else if (['sqlitedb', 'sqlite'].includes(type)) {
-    type = 'sqlite';
-} else if (type === 'mongodb') {
-    type = 'mongodb';
-} else {
+if (['postgresql', 'postgre', 'postgres'].includes(type)) type = 'postgres';
+else if (['mariadb', 'mysql'].includes(type)) type = 'mysql';
+else if (['sqlitedb', 'sqlite'].includes(type)) type = 'sqlite';
+else if (type === 'mongodb') type = 'mongodb';
+else {
     console.error(`Error: Unsupported connection type '${rawType}'.`);
-    console.log('Supported types: mysql, mariadb, postgres, postgresql, sqlite, sqlitedb, mongodb');
     process.exit(1);
 }
 
-const configDir = path.resolve(process.cwd(), 'mapper');
-if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+const cwd = process.cwd();
+const tsConfigPath = path.resolve(cwd, 'mapper.config.ts');
+const jsonConfigPath = path.resolve(cwd, 'mapper.config.json');
 
-const filePath = path.join(configDir, 'connections.ts');
-
+// Create template
 let template: any = {
     name: connectionName,
     type: type
@@ -89,75 +80,69 @@ if (type === 'mysql' || type === 'postgres') {
     };
 }
 
-// Handle file operations
-if (fs.existsSync(filePath)) {
+if (isDefaultFlag) template.isDefault = true;
+
+// Helper to update TS file
+function updateTsConfig(filePath: string, newConnection: any) {
     let content = fs.readFileSync(filePath, 'utf-8');
 
-    // Validation Check: Try to extract and parse the array
-    try {
-        const match = content.match(/export const connections = \s*(\[[\s\S]*\])\s*;?/);
-        if (!match) {
-            throw new Error("Could not find 'connections' array in file.");
-        }
-        // Basic syntax check using new Function (eval-like) to ensure it's valid JS/TS structure
-        // We don't use the result here, just checking for syntax errors
-        new Function(`return ${match[1]}`);
-    } catch (e) {
-        console.warn(`Warning: The file ${filePath} seems to be broken or has invalid syntax.`);
-        console.warn('Please repair or delete the file to continue.');
+    // Check duplicate
+    if (content.includes(`name: "${connectionName}"`) || content.includes(`name: '${connectionName}'`)) {
+        console.warn(`Warning: Connection '${connectionName}' already exists.`);
+        return;
+    }
+
+    // Handle default flag logic (basic string replace)
+    if (isDefaultFlag) {
+        content = content.replace(/isDefault:\s*true/g, 'isDefault: false');
+    }
+
+    // Insert into connections array
+    const connectionsRegex = /connections:\s*\[/;
+    if (!connectionsRegex.test(content)) {
+        console.error("Could not find 'connections: [' in ts config.");
         process.exit(1);
     }
 
-    // Strict duplicate check
-    if (content.includes(`"name": "${connectionName}"`) || content.includes(`name: '${connectionName}'`) || content.includes(`name: "${connectionName}"`)) {
-        console.warn(`Warning: Connection '${connectionName}' already exists in ${filePath}. No changes made.`);
-        process.exit(0); // Exit without error, but no changes
-    }
+    const insertion = `\n    ${JSON.stringify(newConnection, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")},`;
+    content = content.replace(connectionsRegex, `connections: [${insertion}`);
 
-    // Parse logic (simplified regex/string manipulation)
-    // We need to check if any connection is default
-    const hasDefault = content.includes('"isDefault": true') || content.includes('isDefault: true');
+    fs.writeFileSync(filePath, content);
+    console.log(`✓ Added connection '${connectionName}' to ${filePath}`);
+}
 
-    if (!hasDefault && !isDefaultFlag) {
-        console.error('Error: No default connection exists. Please create a default connection first or use --default flag.');
-        process.exit(1);
+// Handle Files
+if (fs.existsSync(tsConfigPath)) {
+    updateTsConfig(tsConfigPath, template);
+} else if (fs.existsSync(jsonConfigPath)) {
+    // Handle JSON (legacy)
+    const content = fs.readFileSync(jsonConfigPath, 'utf-8');
+    const config = JSON.parse(content);
+
+    if (config.connections.some((c: any) => c.name === connectionName)) {
+        console.warn('Connection already exists in JSON.');
+        process.exit(0);
     }
 
     if (isDefaultFlag) {
-        // We need to unset existing default
-        content = content.replace(/"isDefault": true/g, '"isDefault": false');
-        content = content.replace(/isDefault: true/g, 'isDefault: false');
-        template.isDefault = true;
+        config.connections.forEach((c: any) => c.isDefault = false);
     }
 
-    // Append logic
-    const lastBracketIndex = content.lastIndexOf(']');
-    if (lastBracketIndex !== -1) {
-        const contentBefore = content.substring(0, lastBracketIndex).trim();
-        const hasItems = contentBefore.endsWith('}') || contentBefore.endsWith(']');
-
-        const newConnectionStr = JSON.stringify(template, null, 4);
-        const insertion = (hasItems ? ',' : '') + '\n    ' + newConnectionStr;
-
-        content = content.substring(0, lastBracketIndex) + insertion + '\n' + content.substring(lastBracketIndex);
-
-        fs.writeFileSync(filePath, content);
-        console.log(`Updated connection configuration: ${filePath}`);
-    } else {
-        console.error(`Error: Could not parse existing connections file at ${filePath}.`);
-        process.exit(1);
-    }
-
+    config.connections.push(template);
+    fs.writeFileSync(jsonConfigPath, JSON.stringify(config, null, 2));
+    console.log(`✓ Added connection '${connectionName}' to ${jsonConfigPath}`);
 } else {
-    // New file - this becomes default automatically
+    // Create new TS config
     template.isDefault = true;
+    const initialContent = `import { MapperConfig } from '@neupgroup/mapper';
 
-    const newConnectionStr = JSON.stringify(template, null, 4);
-    const fileContent = `
-export const connections = [
-    ${newConnectionStr}
-];
+export const config: MapperConfig = {
+  connections: [
+    ${JSON.stringify(template, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'")}
+  ],
+  schemas: []
+};
 `;
-    fs.writeFileSync(filePath, fileContent.trim() + '\n');
-    console.log(`Created connection configuration: ${filePath}`);
+    fs.writeFileSync(tsConfigPath, initialContent);
+    console.log(`✓ Created ${tsConfigPath} with connection '${connectionName}'`);
 }
