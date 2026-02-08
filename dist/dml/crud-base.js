@@ -76,13 +76,7 @@ export class SelectBuilder {
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
             }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
         }
-        if (!connName)
-            connName = 'default';
         let sql = `SELECT ${this._select} FROM ${this.table}`;
         if (this._where.length > 0) {
             sql += ` WHERE ${this._where.join(' AND ')}`;
@@ -123,13 +117,7 @@ export class InsertBuilder {
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
             }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
         }
-        if (!connName)
-            connName = 'default';
         // Apply default values from schema definition
         const schemaManager = InitMapper.getInstance().getSchemaManager();
         try {
@@ -200,13 +188,7 @@ export class UpdateBuilder {
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
             }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
         }
-        if (!connName)
-            connName = 'default';
         const keys = Object.keys(this.data);
         const values = Object.values(this.data);
         const setClause = keys.map(k => `${k} = ?`).join(', ');
@@ -252,13 +234,7 @@ export class DeleteBuilder {
             if (schemaDef && schemaDef.usesConnection) {
                 connName = schemaDef.usesConnection;
             }
-            else {
-                const defaultConn = InitMapper.getInstance().getDefaultConnection();
-                connName = defaultConn ? defaultConn.name : 'default';
-            }
         }
-        if (!connName)
-            connName = 'default';
         let sql = `DELETE FROM ${this.table}`;
         if (this._where.length > 0) {
             sql += ` WHERE ${this._where.join(' AND ')}`;

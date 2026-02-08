@@ -141,25 +141,12 @@ export function getConfigMapper() {
 // Create a default configured mapper instance
 export function createDefaultMapper(config) {
     const mapper = new ConfigBasedMapper();
-    // If no config provided, try to load from environment or default locations
+    // If no config provided, try to load from environment
     if (!config) {
         // Try to load from environment
         const envConfig = loadConfigFromEnvironment();
         if (envConfig) {
             mapper.configure(envConfig);
-        }
-        else {
-            // Try to load from default config file locations
-            const defaultPaths = ['./mapper.config.json', './config/mapper.json', '/etc/mapper/config.json'];
-            for (const path of defaultPaths) {
-                try {
-                    mapper.configureFromFile(path);
-                    break;
-                }
-                catch (error) {
-                    // Continue trying other paths
-                }
-            }
         }
     }
     else {

@@ -3,7 +3,7 @@ import { ensureInitialized } from './initializer.js';
 
 export class Executor {
     private _bindings: any[] = [];
-    private _connectionName: string = 'default';
+    private _connectionName: string | null = null;
 
     private _transaction: any = null;
 
@@ -14,7 +14,7 @@ export class Executor {
         return this;
     }
 
-    useConnection(name: string): this {
+    useConnection(name: string | null): this {
         this._connectionName = name;
         return this;
     }
@@ -34,14 +34,25 @@ export class Executor {
 
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
-        const conn = connections.get(this._connectionName);
+
+        let connName = this._connectionName;
+
+        if (!connName || connName.trim() === '') {
+            const defaultConn = connections.get('default');
+            if (!defaultConn) {
+                throw new Error('No default connection configured.');
+            }
+            connName = defaultConn.name;
+        }
+
+        const conn = connections.get(connName as string);
 
         if (!conn) {
-            throw new Error(`Connection '${this._connectionName}' not found.`);
+            throw new Error(`Connection '${connName}' not found.`);
         }
 
         const adapter = connections.getAdapter(conn.name);
-        if (!adapter) throw new Error(`Adapter not found for connection '${conn.name}'.`);
+        if (!adapter) throw new Error(`No adapter configured for connection '${conn.name}'.`);
 
         const options = this._transaction ? { transaction: this._transaction } : undefined;
 

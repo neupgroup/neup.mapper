@@ -6,7 +6,7 @@ export declare class Mapper {
     private static initPromise;
     private static initialized;
     /**
-     * Lazy initialization: loads mapper.config.json and registers connections and schemas.
+     * Lazy initialization: loads connections and schemas from mapper/ directory.
      * This runs automatically before any Mapper method is called.
      */
     private static ensureInitialized;

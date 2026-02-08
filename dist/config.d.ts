@@ -1,4 +1,4 @@
-import { Connections, SchemaManager, ConnectionType } from './index.js';
+import { ConnectionType } from './index.js';
 import { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig } from './config-loader.js';
 export { ConfigLoader, MapperConfig, ConnectionConfig, ConfigSchema, ApiConnectionConfig, DatabaseConnectionConfig, SqliteConnectionConfig };
 export declare class ConfigBasedMapper {
@@ -11,8 +11,8 @@ export declare class ConfigBasedMapper {
     private initializeFromConfig;
     private initializeConnection;
     private initializeSchema;
-    getConnections(): Connections;
-    getSchemaManager(): SchemaManager;
+    getConnections(): import("./connections.js").Connections;
+    getSchemaManager(): import("./schema-manager.js").SchemaManager;
     use(schemaName: string): any;
     schema(name: string): any;
     connect(name: string, type: ConnectionType, config: Record<string, any>): import("./index.js").InitMapper;

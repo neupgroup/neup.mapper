@@ -5,7 +5,7 @@ export declare class Executor {
     private _transaction;
     constructor(sql: string);
     bind(bindings: any[] | any): this;
-    useConnection(name: string): this;
+    useConnection(name: string | null): this;
     useTransaction(transaction: any): this;
     execute(): Promise<any>;
 }

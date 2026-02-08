@@ -2,16 +2,15 @@ import { CrudBase } from './dml/crud-base.js';
 import { Migrator } from './ddl/migrator.js';
 import { Executor } from './core/executor.js';
 import { InitMapper } from './core/init-mapper.js';
+import { ensureInitialized } from './core/initializer.js';
 import { createDefaultMapper } from './config.js';
-import { ConfigLoader } from './config-loader.js';
-import { autoAttachAdapter } from './adapters/index.js';
 
 export class Mapper {
     private static initPromise: Promise<void> | null = null;
     private static initialized = false;
 
     /**
-     * Lazy initialization: loads mapper.config.json and registers connections and schemas.
+     * Lazy initialization: loads connections and schemas from mapper/ directory.
      * This runs automatically before any Mapper method is called.
      */
     private static async ensureInitialized(): Promise<void> {
@@ -20,79 +19,9 @@ export class Mapper {
             return;
         }
 
-        // If initialization is in progress, wait for it
-        if (Mapper.initPromise) {
-            return Mapper.initPromise;
-        }
-
-        // Start initialization
-        Mapper.initPromise = (async () => {
-            try {
-                const configLoader = ConfigLoader.getInstance();
-                const initMapper = InitMapper.getInstance();
-
-                // Try to load mapper.config.json from standard locations
-                const defaultPaths = [
-                    './mapper.config.json',
-                    './config/mapper.json',
-                    '../mapper.config.json',
-                ];
-
-                let configLoaded = false;
-                for (const configPath of defaultPaths) {
-                    try {
-                        configLoader.loadFromFile(configPath);
-                        configLoaded = true;
-                        break;
-                    } catch (e) {
-                        // Continue to next path
-                    }
-                }
-
-                if (configLoaded) {
-                    const config = configLoader.getConfig();
-                    if (config) {
-                        // Initialize connections
-                        for (const connConfig of config.connections) {
-                            const existingConns = initMapper.getConnections();
-                            if (!existingConns.get(connConfig.name)) {
-                                initMapper.connect(connConfig.name, connConfig.type, connConfig);
-                            }
-                        }
-
-                        // Initialize schemas
-                        if (config.schemas) {
-                            for (const schemaConfig of config.schemas) {
-                                try {
-                                    const schemaBuilder = initMapper.schema(schemaConfig.name);
-                                    schemaBuilder.use({
-                                        connection: schemaConfig.connection,
-                                        collection: schemaConfig.collection
-                                    });
-
-                                    if (schemaConfig.structure) {
-                                        schemaBuilder.setStructure(schemaConfig.structure as any);
-                                    }
-                                } catch (e: any) {
-                                    // Schema might already exist, ignore
-                                    if (!e.message?.includes('already exists')) {
-                                        console.warn(`Failed to register schema ${schemaConfig.name}:`, e.message);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Mapper.initialized = true;
-            } catch (e) {
-                // Initialization failed, but don't block usage
-                // User might be initializing manually
-                Mapper.initialized = true;
-            }
-        })();
-
-        return Mapper.initPromise;
+        // Delegate to core initializer
+        await ensureInitialized();
+        Mapper.initialized = true;
     }
 
     /**

@@ -1,5 +1,4 @@
 import { InitMapper } from './init-mapper.js';
-import { ConfigLoader } from '../config-loader.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import { pathToFileURL } from 'url';
@@ -16,7 +15,7 @@ export async function ensureInitialized() {
         if (init.getConnections().list().length > 0)
             return;
         const cwd = process.cwd();
-        // 1. Try Loading mapper/connections.ts (or src/mapper/connections.ts for backward compatibility)
+        // 1. Try Loading mapper/connections.ts
         const possibleConnectionFiles = [
             path.join(cwd, 'mapper/connections.ts'),
             path.join(cwd, 'mapper/connections.js'),
@@ -42,7 +41,7 @@ export async function ensureInitialized() {
                 }
             }
         }
-        // 2. Try Loading mapper/schemas.ts (or src/mapper/schemas.ts for backward compatibility)
+        // 2. Try Loading mapper/schemas.ts
         const possibleSchemaFiles = [
             path.join(cwd, 'mapper/schemas.ts'),
             path.join(cwd, 'mapper/schemas.js'),
@@ -60,24 +59,6 @@ export async function ensureInitialized() {
                 catch (e) {
                     // console.warn(`Failed to load schemas from ${file}`, e);
                 }
-            }
-        }
-        // 3. Fallback to ConfigLoader (JSON)
-        if (!connectionsLoaded && init.getConnections().list().length === 0) {
-            const loader = ConfigLoader.getInstance();
-            const defaultPaths = ['./mapper.config.json', './config/mapper.json', '/etc/mapper/config.json'];
-            for (const p of defaultPaths) {
-                try {
-                    loader.loadFromFile(p);
-                    const config = loader.getConfig();
-                    if (config) {
-                        for (const c of config.connections) {
-                            init.connect(c.name, c.type, c);
-                        }
-                        break;
-                    }
-                }
-                catch (e) { }
             }
         }
     })();

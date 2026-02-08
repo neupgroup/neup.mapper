@@ -4,7 +4,7 @@ export class Executor {
     constructor(sql) {
         this.sql = sql;
         this._bindings = [];
-        this._connectionName = 'default';
+        this._connectionName = null;
         this._transaction = null;
     }
     bind(bindings) {
@@ -29,13 +29,21 @@ export class Executor {
         await ensureInitialized();
         const initMapper = InitMapper.getInstance();
         const connections = initMapper.getConnections();
-        const conn = connections.get(this._connectionName);
+        let connName = this._connectionName;
+        if (!connName || connName.trim() === '') {
+            const defaultConn = connections.get('default');
+            if (!defaultConn) {
+                throw new Error('No default connection configured.');
+            }
+            connName = defaultConn.name;
+        }
+        const conn = connections.get(connName);
         if (!conn) {
-            throw new Error(`Connection '${this._connectionName}' not found.`);
+            throw new Error(`Connection '${connName}' not found.`);
         }
         const adapter = connections.getAdapter(conn.name);
         if (!adapter)
-            throw new Error(`Adapter not found for connection '${conn.name}'.`);
+            throw new Error(`No adapter configured for connection '${conn.name}'.`);
         const options = this._transaction ? { transaction: this._transaction } : undefined;
         if (typeof adapter.raw === 'function') {
             return adapter.raw(this.sql, this._bindings, options);
