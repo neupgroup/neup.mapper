@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 export class ConfigLoader {
     static getInstance() {
         if (!ConfigLoader.instance) {
@@ -11,8 +12,7 @@ export class ConfigLoader {
     loadFromFile(path) {
         try {
             // In Node.js environment
-            if (typeof require !== 'undefined') {
-                const fs = require('fs');
+            if (typeof process !== 'undefined' && process.versions != null && process.versions.node != null) {
                 const configData = fs.readFileSync(path, 'utf8');
                 this.config = JSON.parse(configData);
             }

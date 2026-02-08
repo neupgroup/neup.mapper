@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 
 export interface DatabaseConnectionConfig {
   name: string;
@@ -62,8 +63,7 @@ export class ConfigLoader {
   loadFromFile(path: string): void {
     try {
       // In Node.js environment
-      if (typeof require !== 'undefined') {
-        const fs = require('fs');
+      if (typeof process !== 'undefined' && process.versions != null && process.versions.node != null) {
         const configData = fs.readFileSync(path, 'utf8');
         this.config = JSON.parse(configData);
       } else {
