@@ -91,7 +91,8 @@ export class TruncateTableBuilder {
     }
     async exec() {
         const sql = `DELETE FROM ${this.tableName}`;
-        await new Executor(sql).useConnection(this.connectionName).execute();
+        const result = await new Executor(sql).useConnection(this.connectionName).execute();
+        console.log('Migration Result:', result);
     }
 }
 export class ColumnBuilder {
@@ -267,13 +268,15 @@ export class Migrator {
         this.tableName = tableName;
         const columns = Object.entries(schema).map(([c, t]) => `${c} ${t}`).join(', ');
         const sql = `CREATE TABLE IF NOT EXISTS ${tableName} (${columns})`;
-        await new Executor(sql).useConnection(this.connectionName).execute();
+        const result = await new Executor(sql).useConnection(this.connectionName).execute();
+        console.log('Migration Result:', result);
     }
     async legacyUpdate(tableName, schema) {
         for (const [column, type] of Object.entries(schema)) {
             const sql = `ALTER TABLE ${tableName} ADD COLUMN ${column} ${type}`;
             try {
-                await new Executor(sql).useConnection(this.connectionName).execute();
+                const result = await new Executor(sql).useConnection(this.connectionName).execute();
+                console.log('Migration Result:', result);
             }
             catch (error) {
                 // Ignore duplicate column errors
@@ -282,11 +285,14 @@ export class Migrator {
     }
     async legacyDrop(tableName) {
         const sql = `DROP TABLE IF EXISTS ${tableName}`;
-        await new Executor(sql).useConnection(this.connectionName).execute();
+        const result = await new Executor(sql).useConnection(this.connectionName).execute();
+        console.log('Migration Result:', result);
     }
     async legacyTruncate(tableName) {
         const sql = `DELETE FROM ${tableName}`;
-        return new Executor(sql).useConnection(this.connectionName).execute();
+        const result = await new Executor(sql).useConnection(this.connectionName).execute();
+        console.log('Migration Result:', result);
+        return result;
     }
     // --- Execution ---
     generateColumnSql(col, type) {
@@ -361,7 +367,8 @@ export class Migrator {
             createSql += this.columns.map(c => '  ' + this.generateColumnSql(c.getDefinition(), type)).join(',\n');
             createSql += '\n)';
             try {
-                await new Executor(createSql).useConnection(connectionNameToUse).execute();
+                const result = await new Executor(createSql).useConnection(connectionNameToUse).execute();
+                console.log('Migration Result:', result);
             }
             catch (e) {
                 console.error("Create Table Failed:", e.message);
@@ -403,7 +410,8 @@ export class Migrator {
                 }
                 if (sql) {
                     try {
-                        await new Executor(sql).useConnection(connectionNameToUse).execute();
+                        const result = await new Executor(sql).useConnection(connectionNameToUse).execute();
+                        console.log('Migration Action Result:', result);
                     }
                     catch (err) {
                         console.error(`Migration Action Failed: ${err.message}`);
